@@ -8,23 +8,21 @@
 
 namespace bdm 
 {
+  // A single charged antiparticle tracked as a BioDynaMo Agent.
   class ChargedAntiparticle : public Agent 
   {
-      BDM_AGENT_HEADER(ChargedAntiparticle, Agent, 3);
+      BDM_AGENT_HEADER(ChargedAntiparticle, Agent, 4);
 
     public:
       ChargedAntiparticle() = default;
-
-      /// Constructs a particle at `position`, with mass and charge initialized to the species' defaults with 0 velocity
       explicit ChargedAntiparticle(const Real3& position, ParticleSpecies species = ParticleSpecies::kAntiproton);
-
       ~ChargedAntiparticle() override = default;
 
-      // --- kinematics ---------------------------------------------------------
+      // kinematics
       const Real3& GetVelocity() const { return velocity_; }
       void SetVelocity(const Real3& velocity) { velocity_ = velocity; }
 
-      // --- physical properties -------------------------------------------------
+      // physical properties
       real_t GetMass() const { return mass_; }
       void SetMass(real_t mass) { mass_ = mass; }
 
@@ -32,13 +30,18 @@ namespace bdm
       void SetCharge(real_t charge) { charge_ = charge; }
 
       ParticleSpecies GetSpecies() const { return species_; }
+
+      // Changes the agent's species and, unless `keep_overrides` is true, resets mass/charge to that species' defaults.
       void SetSpecies(ParticleSpecies species, bool keep_overrides = false);
 
-      // --- annihilation state ---------------------------------------------------
-      bool IsAnnihilated() const { return annihilated_; }
-      void MarkAnnihilated() { annihilated_ = true; } // marks the agent as annihilated.
+      bool IsAnnihilated() const { return annihilated_; } // annihilation state
+      void MarkAnnihilated() { annihilated_ = true; } // marks the agent as annihilated
 
-      // --- Agent interface: shape, position, diameter, displacement ------------
+      // Coulomb force
+      const Real3& GetCoulombForce() const { return coulomb_force_; }
+      void SetCoulombForce(const Real3& force) { coulomb_force_ = force; }
+
+      // Agent interface: shape, position, diameter, displacement
       Shape GetShape() const override { return Shape::kSphere; }
 
       const Real3& GetPosition() const override { return position_; }
@@ -47,8 +50,9 @@ namespace bdm
       real_t GetDiameter() const override { return diameter_; }
       void SetDiameter(real_t diameter) override { diameter_ = diameter; }
 
-      // override bdm's calculate displacement with default return values
       Real3 CalculateDisplacement(const InteractionForce* force, real_t squared_radius, real_t dt) override { return Real3{0.0, 0.0, 0.0}; }
+
+      // Implemented for interface completeness
       void ApplyDisplacement(const Real3& displacement) override { position_ = position_ + displacement; }
 
     private:
@@ -59,6 +63,7 @@ namespace bdm
       real_t charge_ = 0.0;
       ParticleSpecies species_ = ParticleSpecies::kAntiproton;
       bool annihilated_ = false;
+      Real3 coulomb_force_ = {0.0, 0.0, 0.0};
   };
-}  // namespace bdm
-#endif  // AGENTS_CHARGED_ANTIPARTICLE_H_
+}
+#endif

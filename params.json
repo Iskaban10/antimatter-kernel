@@ -1,0 +1,19 @@
+{
+  "seed": 42,
+  "b0": 1.0,
+  "trap_voltage": 10.0,
+  "z0": 0.01,
+  "rho0": 0.01,
+  "dt": 1e-12,
+  "num_steps": 2000,
+  "num_particles": 10,
+  "species": "positron",
+  "initial_cloud_radius": 1e-4,
+
+  "coulomb_enabled": true,
+  "cutoff_radius": 1e-3,
+
+  "annihilation_enabled": false,
+  "contact_radius": 1e-9,
+  "annihilation_probability": 0.1
+}

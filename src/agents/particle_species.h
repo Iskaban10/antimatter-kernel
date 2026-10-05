@@ -41,6 +41,6 @@ namespace bdm
         }
         return {0.0, 0.0};  // unreachable safety fallback
     }
-}  // namespace bdm
+}
 
-#endif  // AGENTS_PARTICLE_SPECIES_H_
+#endif

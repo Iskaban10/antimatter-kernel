@@ -1,52 +1,55 @@
 #include "forces/lorentz.h"
+
 #include "agents/charged_antiparticle.h"
+#include "core/param/param.h"
+#include "core/simulation.h"
+#include "core/util/math.h"
 #include "fields/penning_trap.h"
 #include "params/physics_params.h"
-#include "core/simulation.h"
-#include "core/param/param.h"
 
-namespace bdm {
-
-BDM_BEHAVIOR_HEADER_IMPL(LorentzForce);
-
-void LorentzForce::Run(Agent* agent) 
+namespace bdm 
 {
-  auto* particle = dynamic_cast<ChargedAntiparticle*>(agent);
-  if (!particle) return;
+  void LorentzForce::Run(Agent* agent) 
+  {
+    auto* particle = dynamic_cast<ChargedAntiparticle*>(agent);
 
-  auto* sim = Simulation::GetActive();
-  auto* pparams = sim->GetParam()->Get<PhysicsParams>();
+    if (particle == nullptr || field_ == nullptr) { return; } // no force on if field absent
+    if (particle->IsAnnihilated()) { return; }  // annihilated particles are only kept for visualization
 
-  PenningTrap trap(pparams->trap_v0, pparams->trap_r0, pparams->trap_z0, pparams->b_field_z);
+    const real_t dt_ = Simulation::GetActive()->GetParam()->Get<PhysicsParams>()->dt;
+    const real_t q = particle->GetCharge();
+    const real_t m = particle->GetMass();
 
-  double dt = sim->GetParam()->simulation_time_step;
-  double q = particle->GetCharge();
-  double m = particle->GetMass();
+    if (m <= 0.0 || dt_ <= 0.0) { return; }
 
-  Real3 pos = particle->GetPosition();
-  Real3 vel = particle->GetVelocity();
+    const Real3& x = particle->GetPosition();
+    const Real3& v = particle->GetVelocity();
 
-  Real3 E = trap.GetElectricField(pos);
-  Real3 B = trap.GetMagneticField(pos);
+    const Real3 e_field = field_->GetElectricField(x);
+    const Real3 b_field = field_->GetMagneticField(x);
 
-  // Lorentz Force: F = q * (E + v x B)
-  Real3 v_cross_B = {
-      vel[1] * B[2] - vel[2] * B[1],
-      vel[2] * B[0] - vel[0] * B[2],
-      vel[0] * B[1] - vel[1] * B[0]
-  };
+    const Real3 coulomb_force = particle->GetCoulombForce();  // defaults to zero in case COulomb force hasn't been run
 
-  Real3 force = {
-      q * (E[0] + v_cross_B[0]),
-      q * (E[1] + v_cross_B[1]),
-      q * (E[2] + v_cross_B[2])
-  };
+    // --- Boris pusher, with trap E-field and Coulomb force combined ------
+    const real_t half_dt = 0.5 * dt_;
+    const Real3 total_force = e_field * q + coulomb_force;
+    const Real3 half_kick = total_force * (half_dt / m);
 
-  Real3 accel = {force[0] / m, force[1] / m, force[2] / m}; // accn = force / mass
+    const Real3 v_minus = v + half_kick;
 
-  // Update velocity and position
-  particle->SetVelocity({vel[0] + accel[0] * dt, vel[1] + accel[1] * dt, vel[2] + accel[2] * dt});
-  particle->SetPosition({pos[0] + vel[0] * dt, pos[1] + vel[1] * dt, pos[2] + vel[2] * dt});
+    const Real3 t_vec = b_field * (q * half_dt / m);
+    const Real3 v_prime = v_minus + Math::CrossProduct(v_minus, t_vec);
+
+    const real_t t_mag_sq = t_vec * t_vec;  // Real3 * Real3 is dot product
+    const Real3 s_vec = t_vec * (2.0 / (1.0 + t_mag_sq));
+
+    const Real3 v_plus = v_minus + Math::CrossProduct(v_prime, s_vec);
+    const Real3 v_new = v_plus + half_kick;
+
+    const Real3 x_new = x + v_new * dt_;
+
+    particle->SetVelocity(v_new);
+    particle->SetPosition(x_new);
+    particle->SetCoulombForce(Real3{0.0, 0.0, 0.0}); // resets stale force as safety default
+  }
 }
-
-} // namespace bdm

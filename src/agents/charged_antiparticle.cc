@@ -22,4 +22,4 @@ namespace bdm
             charge_ = props.charge;
         }
     }
-}  // namespace bdm
+}

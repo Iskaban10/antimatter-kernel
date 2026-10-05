@@ -1,0 +1,13 @@
+[simulation]
+output_dir = "output"
+
+[visualization]
+export = true
+export_generate_pvsm = true
+interval = 20
+
+  [[visualize_agent]]
+  name = "ChargedAntiparticle"
+  # Optional: request extra data members beyond the default position_/diameter_
+  # (useful later for coloring particles by charge or species in ParaView).
+  # additional_data_members = [ "charge_" ]
