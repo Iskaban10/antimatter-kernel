@@ -5,20 +5,42 @@
 
 namespace bdm 
 {
+
+  // Describes the static electromagnetic field configuration of an ideal (hyperbolic-electrode) Penning trap:
+  // a uniform axial magnetic field superimposed on a quadrupole electrostatic confining potential.
+  // This class is deliberately field-geometry-only answering only the E and B in space
+  //
+  // Field model:
+  //   B(x, y, z) = B0 * z_hat  (uniform)
+  //
+  //   phi(rho, z) = (U0 / (4 d^2)) * (2 z^2 - rho^2),  rho^2 = x^2 + y^2
+  //   E = -grad(phi)
+  //   Ex = (U0 / (2 d^2)) * x
+  //   Ey = (U0 / (2 d^2)) * y
+  //   Ez = -(U0 / d^2) * z
+  //
+  // where d is the trap's characteristic dimension, d^2 = z0^2/2 + rho0^2/4, with z0 the endcap half-distance and rho0 the ring-electrode radius.
+
   class PenningTrapField 
   {
     public:
       PenningTrapField() = default;
 
-      // constructs a field directly from B0, trap voltage U0, and the precomputed characteristic trap-dimension d.
+      // Constructs a field directly from B0, trap voltage U0, and the precomputed characteristic dimension d.
       PenningTrapField(real_t b0, real_t trap_voltage, real_t characteristic_dimension);
 
-      // constructs a field from physical electrode geometry and computes the characteristic dimension d internally.
+      // Constructs a field from physical electrode geometry (endcap half-distance z0 and ring-electrode radius rho0),
+      // and computes the characteristic dimension d internally.
       static PenningTrapField MakeFromGeometry(real_t b0, real_t trap_voltage, real_t z0, real_t rho0);
 
       // Returns the electric field E(x, y, z) at `position`, in V/m.
       Real3 GetElectricField(const Real3& position) const;
-      Real3 GetMagneticField(const Real3& position) const;
+
+      // Returns the electric potential phi(x, y, z) at `position`, in Volts (phi = (U0/4d^2)(2z^2 - rho^2), matching GetElectricField = -grad(phi)).
+      real_t GetPotential(const Real3& position) const;
+
+      // Returns the magnetic field B(x, y, z) at `position`, in Tesla.
+      Real3 GetMagneticField(const Real3& position) const; // position unrequired in case of uniform field
 
       real_t GetB0() const { return b0_; }
       void SetB0(real_t b0) { b0_ = b0; }
@@ -30,13 +52,14 @@ namespace bdm
       void SetCharacteristicDimension(real_t d) { d_ = d; }
 
     private:
-      // axial magnetic field strength, Tesla.
+      // Axial magnetic field strength, Tesla.
       real_t b0_ = 0.0;
 
-      // trap (ring-to-endcap) voltage, Volts.
+      // Trap (ring-to-endcap) voltage, Volts.
       real_t trap_voltage_ = 0.0;
 
-      // characteristic trap dimension, meters. Must be > 0 for GetElectricField to return finite values
+      // Characteristic trap dimension, meters. Must be > 0 for
+      // GetElectricField to return finite values; see MakeFromGeometry.
       real_t d_ = 1.0;
   };
 }

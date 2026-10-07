@@ -5,7 +5,8 @@
 
 namespace bdm 
 {
-  PenningTrapField::PenningTrapField(real_t b0, real_t trap_voltage, real_t characteristic_dimension) : b0_(b0), trap_voltage_(trap_voltage), d_(characteristic_dimension) 
+  PenningTrapField::PenningTrapField(real_t b0, real_t trap_voltage, real_t characteristic_dimension)
+      : b0_(b0), trap_voltage_(trap_voltage), d_(characteristic_dimension) 
   {
     assert(d_ > 0.0 && "Penning trap characteristic dimension must be > 0");
   }
@@ -30,8 +31,18 @@ namespace bdm
     return Real3{radial_coeff * x, radial_coeff * y, -axial_coeff * z};
   }
 
+  real_t PenningTrapField::GetPotential(const Real3& position) const 
+  {
+    const real_t x = position[0];
+    const real_t y = position[1];
+    const real_t z = position[2];
+    const real_t rho_squared = x * x + y * y;
+    const real_t d_squared = d_ * d_;
+    return (trap_voltage_ / (4.0 * d_squared)) * (2.0 * z * z - rho_squared);
+  }
+
   Real3 PenningTrapField::GetMagneticField(const Real3& /*position*/) const 
   {
-    return Real3{0.0, 0.0, b0_}; // uniform axial field independent of trap
+    return Real3{0.0, 0.0, b0_};  // uniform axial field: independent of position for an ideal trap.
   }
-}  // namespace bdm
+}

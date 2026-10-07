@@ -25,16 +25,14 @@ namespace bdm
 
   void InteractionParams::PrintParams() const 
   {
-    std::cout << "[interaction] coulomb_enabled=" << (coulomb_enabled ? "true" : "false") << " cutoff_radius=" << cutoff_radius << " m (PLACEHOLDER -- not physically derived)" << std::endl;
+    std::cout << "\n[interaction] \ncoulomb_enabled=" << (coulomb_enabled ? "true" : "false") << "\ncutoff_radius=" << cutoff_radius << " m" << std::endl;
   }
 
   void InteractionParams::Validate() const 
   {
     if (coulomb_enabled && cutoff_radius <= 0.0) 
     {
-      throw std::invalid_argument(
-          "InteractionParams: cutoff_radius must be > 0 when coulomb_enabled "
-          "is true.");
+      throw std::invalid_argument( "InteractionParams: cutoff_radius must be > 0 when coulomb_enabled " "is true.");
     }
   }
 }

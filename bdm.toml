@@ -1,13 +1,14 @@
 [simulation]
 output_dir = "output"
+environment = "kd_tree"
+nanoflann_depth = 10
+unschedule_default_operations = ["load balancing"]
 
 [visualization]
 export = true
 export_generate_pvsm = true
-interval = 20
+interval = 10
 
   [[visualize_agent]]
   name = "ChargedAntiparticle"
-  # Optional: request extra data members beyond the default position_/diameter_
-  # (useful later for coloring particles by charge or species in ParaView).
-  # additional_data_members = [ "charge_" ]
+  
