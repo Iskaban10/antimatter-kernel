@@ -1,6 +1,8 @@
 #ifndef AGENTS_CHARGED_ANTIPARTICLE_H_
 #define AGENTS_CHARGED_ANTIPARTICLE_H_
 
+#include <cstring>
+
 #include "agents/particle_species.h"
 #include "core/agent/agent.h"
 #include "core/container/math_array.h"
@@ -8,62 +10,86 @@
 
 namespace bdm 
 {
-  // A single charged antiparticle tracked as a BioDynaMo Agent.
+  // A single charged antiparticle (or any charged particle listed in ParticleSpecies) tracked as a BioDynaMo Agent.
   class ChargedAntiparticle : public Agent 
   {
-      BDM_AGENT_HEADER(ChargedAntiparticle, Agent, 4);
+    BDM_AGENT_HEADER(ChargedAntiparticle, Agent, 4);
 
-    public:
-      ChargedAntiparticle() = default;
-      explicit ChargedAntiparticle(const Real3& position, ParticleSpecies species = ParticleSpecies::kAntiproton);
-      ~ChargedAntiparticle() override = default;
+  public:
+    ChargedAntiparticle() = default;
 
-      // kinematics
-      const Real3& GetVelocity() const { return velocity_; }
-      void SetVelocity(const Real3& velocity) { velocity_ = velocity; }
+    // Constructs a particle of the given species at `position`, with velocity, mass, and charge initialized to the species' defaults.
+    // Diameter is set to a small default for  point-charge neighbor search; can be overriden via SetDiameter if a
+    // different value is needed.
+    explicit ChargedAntiparticle(const Real3& position, ParticleSpecies species = ParticleSpecies::kAntiproton);
 
-      // physical properties
-      real_t GetMass() const { return mass_; }
-      void SetMass(real_t mass) { mass_ = mass; }
+    ~ChargedAntiparticle() override = default;
 
-      real_t GetCharge() const { return charge_; }
-      void SetCharge(real_t charge) { charge_ = charge; }
+    // --- kinematics ---------------------------------------------------------
+    const Real3& GetVelocity() const { return velocity_; }
+    void SetVelocity(const Real3& velocity) { velocity_ = velocity; }
 
-      ParticleSpecies GetSpecies() const { return species_; }
+    // --- physical properties -------------------------------------------------
+    real_t GetMass() const { return mass_; }
+    void SetMass(real_t mass) { mass_ = mass; }
 
-      // Changes the agent's species and, unless `keep_overrides` is true, resets mass/charge to that species' defaults.
-      void SetSpecies(ParticleSpecies species, bool keep_overrides = false);
+    real_t GetCharge() const { return charge_; }
+    void SetCharge(real_t charge) { charge_ = charge; }
 
-      bool IsAnnihilated() const { return annihilated_; } // annihilation state
-      void MarkAnnihilated() { annihilated_ = true; } // marks the agent as annihilated
+    ParticleSpecies GetSpecies() const { return species_; }
 
-      // Coulomb force
-      const Real3& GetCoulombForce() const { return coulomb_force_; }
-      void SetCoulombForce(const Real3& force) { coulomb_force_ = force; }
+    // Changes the agent's species and, unless `keep_overrides` is true, resets mass/charge to that species' defaults.
+    void SetSpecies(ParticleSpecies species, bool keep_overrides = false);
 
-      // Agent interface: shape, position, diameter, displacement
-      Shape GetShape() const override { return Shape::kSphere; }
+    // --- annihilation state ---------------------------------------------------
+    bool IsAnnihilated() const { return annihilated_; }
+    void MarkAnnihilated() { annihilated_ = true; } // Marks the agent as annihilated
 
-      const Real3& GetPosition() const override { return position_; }
-      void SetPosition(const Real3& pos) override { position_ = pos; }
+    // --- Coulomb force scratch value (see class-level comment) ---------------
+    const Real3& GetCoulombForce() const { return coulomb_force_; }
+    void SetCoulombForce(const Real3& force) { coulomb_force_ = force; }
 
-      real_t GetDiameter() const override { return diameter_; }
-      void SetDiameter(real_t diameter) override { diameter_ = diameter; }
+    // --- Agent interface: shape, position, diameter, displacement ------------
+    Shape GetShape() const override { return Shape::kSphere; }
 
-      Real3 CalculateDisplacement(const InteractionForce* force, real_t squared_radius, real_t dt) override { return Real3{0.0, 0.0, 0.0}; }
+    const Real3& GetPosition() const override { return position_; }
+    void SetPosition(const Real3& pos) override { position_ = pos; }
 
-      // Implemented for interface completeness
-      void ApplyDisplacement(const Real3& displacement) override { position_ = position_ + displacement; }
+    real_t GetDiameter() const override { return diameter_; }
+    void SetDiameter(real_t diameter) override { diameter_ = diameter; }
 
-    private:
-      Real3 position_ = {0.0, 0.0, 0.0};
-      real_t diameter_ = 0.0;
-      Real3 velocity_ = {0.0, 0.0, 0.0};
-      real_t mass_ = 0.0;
-      real_t charge_ = 0.0;
-      ParticleSpecies species_ = ParticleSpecies::kAntiproton;
-      bool annihilated_ = false;
-      Real3 coulomb_force_ = {0.0, 0.0, 0.0};
+    Real3 CalculateDisplacement(const InteractionForce* force, real_t squared_radius, real_t dt) override 
+    {
+      return Real3{0.0, 0.0, 0.0};
+    }
+
+    void ApplyDisplacement(const Real3& displacement) override { position_ = position_ + displacement; }
+
+  private:
+    Real3 position_ = {0.0, 0.0, 0.0};
+    real_t diameter_ = 0.0;
+    Real3 velocity_ = {0.0, 0.0, 0.0};
+    real_t mass_ = 0.0;
+    real_t charge_ = 0.0;
+    ParticleSpecies species_ = ParticleSpecies::kAntiproton;
+    bool annihilated_ = false;
+    Real3 coulomb_force_ = {0.0, 0.0, 0.0};
+
+  public:
+    static const char* TypeName() { return "ChargedAntiparticle"; }
   };
+
+  inline ChargedAntiparticle* FastCast(Agent* agent) 
+  {
+    if (agent == nullptr) { return nullptr; }
+    if (std::strcmp(agent->GetTypeName(), ChargedAntiparticle::TypeName()) != 0) { return nullptr; }
+    return static_cast<ChargedAntiparticle*>(agent);
+  }
+
+  inline const ChargedAntiparticle* FastCast(const Agent* agent) {
+    if (agent == nullptr) { return nullptr; }
+    if (std::strcmp(agent->GetTypeName(), ChargedAntiparticle::TypeName()) != 0) { return nullptr; }
+    return static_cast<const ChargedAntiparticle*>(agent);
+  }
 }
 #endif

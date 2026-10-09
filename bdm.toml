@@ -1,6 +1,6 @@
 [simulation]
 output_dir = "output"
-environment = "kd_tree"
+environment = "octree"
 nanoflann_depth = 10
 unschedule_default_operations = ["load balancing"]
 

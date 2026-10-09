@@ -11,15 +11,15 @@
 #include "params/interaction_params.h"
 #include "utils/constants.h"
 
-// Coulumb interaction between 2 charged particles which must be executed first before calculating Lorentz force
 namespace bdm 
 {
   void CoulombInteraction::Run(Agent* agent) 
   {
-    auto* particle = dynamic_cast<ChargedAntiparticle*>(agent);
-    if (particle == nullptr || particle->IsAnnihilated()) { return;}
+    auto* particle = FastCast(agent);
+    if (particle == nullptr || particle->IsAnnihilated()) { return; }
 
-    const auto* interaction_params = Simulation::GetActive()->GetParam()->Get<InteractionParams>();
+    const auto* interaction_params =
+        Simulation::GetActive()->GetParam()->Get<InteractionParams>();
     if (!interaction_params->coulomb_enabled) 
     {
       particle->SetCoulombForce(Real3{0.0, 0.0, 0.0});
@@ -42,7 +42,7 @@ namespace bdm
     auto accumulate_force = L2F([&](Agent* neighbor, real_t squared_distance) 
     {
       if (neighbor == agent) { return; }
-      auto* other = dynamic_cast<ChargedAntiparticle*>(neighbor);
+      auto* other = FastCast(neighbor);
       if (other == nullptr || other->IsAnnihilated()) { return; }
       const real_t q_j = other->GetCharge();
       if (q_j == 0.0) { return; }
