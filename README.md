@@ -4,9 +4,8 @@ An agent-based simulation of charged antiparticles confined in a Penning trap, b
 
 The project follows the [Agent-based Large-Scale Antimatter Simulation](https://compiler-research.org/open_projects?tag=all#agent-based-large-scale-antimatter-simulation) project from compiler-research.org, which aims to extend BioDynaMo to charged-particle simulation of the kind used in antimatter experiments such as CERN's AEgIS.
 
-```
-Status: Early Development
-```
+>Status: Early Development
+
 
 ## Table of Contents
 1. [Building the simulation](#building-the-simulation)
@@ -15,7 +14,8 @@ Status: Early Development
 4. [Project Structure](#project-structure)
 5. [Input Parameters](#input-parameters)
 
-## 1. Building the simulation
+---
+## Building the simulation
 
 Option 1:
 ```bash
@@ -29,7 +29,7 @@ cmake ..
 make -j <number_of_processes_for_build>
 ```
 
-## 2. Running the simulation
+## Running the simulation
 
 Before running the simulation, you need to build it. If you haven't done so, 
 please go back to step 1.
@@ -43,37 +43,27 @@ Option 2:
 ```
 ./build/antimatter-kernel
 ```
+---
+--- 
 
-## 3. Project Overview
+## Project Overview
+
 AntimatterKernel is an agent-based model, written in C++ on top of BioDynaMo, that simulates such ensembles. Each antiparticle is an agent carrying its own position, velocity, mass, charge and species, and the module provides the physics as composable BioDynaMo plugins:
 
 - **Penning-trap external fields:** a uniform axial magnetic field plus a hyperbolic-electrode quadrupole electrostatic potential.
 - **Lorentz-force dynamics:** particle motion is advanced with the Boris algorithm, the standard integrator for charged-particle motion in magnetic fields. Unlike explicit Euler integration, it does not introduce spurious numerical heating of the cyclotron motion over many orbits.
 - **Pairwise Coulomb interaction:** computed through BioDynaMo's neighbor-search infrastructure with a configurable cutoff radius. The Coulomb force is folded into the same symmetric half-kick as the trap's electric field inside the Boris step, so the combined system keeps second-order accuracy instead of being applied as a separate, less accurate velocity kick.
-- **Stochastic annihilation:** particle/antiparticle pairs (positron-electron, antiproton-proton) that come into contact can annihilate with a configurable probability, using a two-step mark-then-remove scheme so annihilation events remain observable in the output for one step.
+- **Stochastic annihilation:** particle-antiparticle pairs (positron-electron, antiproton-proton) that come into contact can annihilate with a configurable probability, using a two-step mark-then-remove scheme so annihilation events remain observable in the output for one step.
 - **Multi-species support:** antiproton, positron, antihydrogen, electron and proton, each with SI-unit default mass and charge.
 
 The project aims to turn Penning-trap prototypes into a reusable, documented and scalable module for antimatter-motivated studies and other charged-particle systems.
-
-
-### Characteristic Timescales
-
-Penning-trap motion has three very different characteristic timescales, which determine how the timestep `dt` and the number of steps must be chosen. For the default configuration (positron, `b0 = 1 T`, `trap_voltage = 10 V`, `z0 = rho0 = 1 cm`):
-
-| Motion | Formula | Approximate period |
-|:------:|:-------:|:------------------:|
-| Cyclotron | ω_c = qB / m | 3.6 × 10⁻¹¹ s (36 ps) |
-| Axial (trap) | ω_z = √(qU₀ / (m d²)) | 4.1 × 10⁻⁸ s (41 ns) |
-| Magnetron | ω_m ≈ ω_z² / (2ω_c) | 9.4 × 10⁻⁵ s (94 µs) |
-
-The term `d² = z0²/2 + rho0²/4` is the characteristic trap dimension. The default `dt = 1e-12 s` gives about 36 integration steps per cyclotron period, and the default `num_steps = 50000` covers 50 ns of physical time, which is roughly 1,400 cyclotron periods and a little more than one axial oscillation. The magnetron period is far beyond what is feasible with this timestep; resolving it is outside the scope of a default run.
 
 ### Current Status and Known Limitations
 
 This is a work in progress. The following are known and documented in the source:
 
 - **Initial velocities are zero.** Particles are seeded at random positions inside a small cloud with no thermal velocity distribution.
-- **Annihilation is a simplified placeholder model.** It uses a flat per-step probability when a particle/antiparticle pair is within a contact radius. It is *not* derived from a physical cross-section, so annihilation statistics should be treated as illustrative of the mechanism, not as a validated prediction.
+- **Annihilation is a simplified placeholder model.** It uses a flat per-step probability when a particle-antiparticle pair is within a contact radius. It is *not* derived from a physical cross-section, so annihilation statistics should be treated as illustrative of the mechanism, not as a validated prediction.
 - **Coulomb interaction uses a hard cutoff radius.** Coulomb's law is long-range, but BioDynaMo's neighbor search requires a finite radius. Agents farther apart than `cutoff_radius` do not interact, which is a genuine physical approximation.
 
 ### Validation: Energy Analysis
