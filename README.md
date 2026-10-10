@@ -58,14 +58,6 @@ AntimatterKernel is an agent-based model, written in C++ on top of BioDynaMo, th
 
 The project aims to turn Penning-trap prototypes into a reusable, documented and scalable module for antimatter-motivated studies and other charged-particle systems.
 
-### Current Status and Known Limitations
-
-This is a work in progress. The following are known and documented in the source:
-
-- **Initial velocities are zero.** Particles are seeded at random positions inside a small cloud with no thermal velocity distribution.
-- **Annihilation is a simplified placeholder model.** It uses a flat per-step probability when a particle-antiparticle pair is within a contact radius. It is *not* derived from a physical cross-section, so annihilation statistics should be treated as illustrative of the mechanism, not as a validated prediction.
-- **Coulomb interaction uses a hard cutoff radius.** Coulomb's law is long-range, but BioDynaMo's neighbor search requires a finite radius. Agents farther apart than `cutoff_radius` do not interact, which is a genuine physical approximation.
-
 ### Validation: Energy Analysis
 
 The magnetic field does no work on a charged particle, so for a correct and adequately time-resolved integrator the total energy (kinetic + trap potential + Coulomb potential) should stay approximately constant during a run. The module logs this at regular intervals and writes it to `energy_analysis.csv` inside the run's output directory. Steady, monotonic growth of the fractional drift is the signature of an integration problem (for example `dt` too large relative to the cyclotron period). The Coulomb potential energy is computed with the *same* cutoff radius as the force, so any drift observed reflects the integrator and not the cutoff approximation.

@@ -6,7 +6,7 @@
   "rho0": 0.01,
   "dt": 1e-12,
   "num_steps": 5000,
-  "num_particles": 20,
+  "num_particles": 100,
   "species": "positron",
   "initial_cloud_radius": 1e-4,
 
