@@ -61,7 +61,7 @@ namespace bdm
 
   void PhysicsParams::PrintParams() const 
   {
-    std::cout << "[physics] \nseed=" << seed
+    std::cout << "\n[physics] \nseed=" << seed
               << "\nspecies=" << SpeciesToString(species)
               << "\nnum_particles=" << num_particles
               << "\ninitial_cloud_radius=" << initial_cloud_radius << " m"
