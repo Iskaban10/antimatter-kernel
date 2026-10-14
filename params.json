@@ -5,15 +5,17 @@
   "z0": 0.01,
   "rho0": 0.01,
   "dt": 1e-12,
-  "num_steps": 5000,
+  "num_steps": 500,
   "num_particles": 100,
   "species": "positron",
   "initial_cloud_radius": 1e-4,
 
   "coulomb_enabled": true,
+  "coulomb_method": "barnes-hut",
   "cutoff_radius": 1e-3,
+  "barnes_hut_theta": 0.5,
 
-  "annihilation_enabled": true,
-  "contact_radius": 1e-5,
-  "annihilation_probability": 0.1
+  "annihilation_enabled": false,
+  "contact_radius": 1e-9,
+  "annihilation_probability": 0.9
 }

@@ -82,13 +82,14 @@ namespace bdm
   inline ChargedAntiparticle* FastCast(Agent* agent) 
   {
     if (agent == nullptr) { return nullptr; }
-    if (std::strcmp(agent->GetTypeName(), ChargedAntiparticle::TypeName()) != 0) { return nullptr; }
+    if (std::strcmp(agent->GetTypeName(), ChargedAntiparticle::TypeName()) != 0)  return nullptr;
     return static_cast<ChargedAntiparticle*>(agent);
   }
 
-  inline const ChargedAntiparticle* FastCast(const Agent* agent) {
-    if (agent == nullptr) { return nullptr; }
-    if (std::strcmp(agent->GetTypeName(), ChargedAntiparticle::TypeName()) != 0) { return nullptr; }
+  inline const ChargedAntiparticle* FastCast(const Agent* agent) 
+  {
+    if (agent == nullptr)  return nullptr;
+    if (std::strcmp(agent->GetTypeName(), ChargedAntiparticle::TypeName()) != 0)  return nullptr;
     return static_cast<const ChargedAntiparticle*>(agent);
   }
 }

@@ -9,6 +9,15 @@
 namespace bdm 
 {
   const ParamGroupUid InteractionParams::kUid = ParamGroupUidGenerator::Get()->NewUid();
+
+  CoulombMethod InteractionParams::GetCoulombMethod() const 
+  {
+    if (coulomb_method == "standard") return CoulombMethod::kStandard;
+    if (coulomb_method == "barnes-hut") return CoulombMethod::kBarnesHut;
+    if (coulomb_method == "fast-multipole") return CoulombMethod::kFastMultipole;
+    throw std::invalid_argument( "InteractionParams: unrecognized coulomb_method '" + coulomb_method + "'. Expected one of: standard, barnes-hut, fast-multipole.");
+  }
+
   void InteractionParams::LoadParams(const std::string& filename) 
   {
     std::ifstream file(filename);
@@ -20,19 +29,41 @@ namespace bdm
     nlohmann::json j;
     file >> j;
     coulomb_enabled = j.value("coulomb_enabled", coulomb_enabled);
+    coulomb_method = j.value("coulomb_method", coulomb_method);
     cutoff_radius = j.value("cutoff_radius", cutoff_radius);
+    barnes_hut_theta = j.value("barnes_hut_theta", barnes_hut_theta);
   }
 
   void InteractionParams::PrintParams() const 
   {
-    std::cout << "\n[interaction] \ncoulomb_enabled=" << (coulomb_enabled ? "true" : "false") << "\ncutoff_radius=" << cutoff_radius << " m" << std::endl;
+    std::cout << "\n[interaction] \ncoulomb_enabled=" << (coulomb_enabled ? "true" : "false") << "\ncoulomb_method=" << coulomb_method;
+    if (coulomb_method == "standard") 
+    {
+      std::cout << "\ncutoff_radius=" << cutoff_radius << " m";
+    } 
+    else if (coulomb_method == "barnes-hut") 
+    {
+      std::cout << "\nbarnes_hut_theta=" << barnes_hut_theta;
+    }
+    std::cout << std::endl;
   }
 
   void InteractionParams::Validate() const 
   {
-    if (coulomb_enabled && cutoff_radius <= 0.0) 
+    const CoulombMethod method = GetCoulombMethod();
+
+    if (method == CoulombMethod::kFastMultipole) 
     {
-      throw std::invalid_argument( "InteractionParams: cutoff_radius must be > 0 when coulomb_enabled " "is true.");
+      throw std::invalid_argument( "InteractionParams: coulomb_method 'fast-multipole' is recognized but NOT IMPLEMENTED yet. Use 'standard' or 'barnes-hut'.");
+    }
+    if (!coulomb_enabled) { return; }
+    if (method == CoulombMethod::kStandard && cutoff_radius <= 0.0) 
+    {
+      throw std::invalid_argument("InteractionParams: cutoff_radius must be > 0 when coulomb_method is 'standard' and coulomb_enabled is true.");
+    }
+    if (method == CoulombMethod::kBarnesHut && (barnes_hut_theta < 0.0 || barnes_hut_theta > 1.0)) 
+    {
+      throw std::invalid_argument( "InteractionParams: barnes_hut_theta must be in [0, 1] (values above 1 could make a particle interact with its own tree node).");
     }
   }
 }

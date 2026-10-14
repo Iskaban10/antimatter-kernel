@@ -18,8 +18,7 @@ namespace bdm
     auto* particle = FastCast(agent);
     if (particle == nullptr || particle->IsAnnihilated()) { return; }
 
-    const auto* interaction_params =
-        Simulation::GetActive()->GetParam()->Get<InteractionParams>();
+    const auto* interaction_params = Simulation::GetActive()->GetParam()->Get<InteractionParams>();
     if (!interaction_params->coulomb_enabled) 
     {
       particle->SetCoulombForce(Real3{0.0, 0.0, 0.0});
@@ -41,11 +40,11 @@ namespace bdm
 
     auto accumulate_force = L2F([&](Agent* neighbor, real_t squared_distance) 
     {
-      if (neighbor == agent) { return; }
+      if (neighbor == agent)  return; 
       auto* other = FastCast(neighbor);
-      if (other == nullptr || other->IsAnnihilated()) { return; }
+      if (other == nullptr || other->IsAnnihilated())  return; 
       const real_t q_j = other->GetCharge();
-      if (q_j == 0.0) { return; }
+      if (q_j == 0.0)  return; 
 
       constexpr real_t kMinSquaredDistance = 1e-30;
       if (squared_distance < kMinSquaredDistance) 
