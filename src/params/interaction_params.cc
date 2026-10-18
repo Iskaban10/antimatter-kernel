@@ -32,6 +32,8 @@ namespace bdm
     coulomb_method = j.value("coulomb_method", coulomb_method);
     cutoff_radius = j.value("cutoff_radius", cutoff_radius);
     barnes_hut_theta = j.value("barnes_hut_theta", barnes_hut_theta);
+    fast_multipole_order = j.value("fast_multipole_order", fast_multipole_order);
+    fast_multipole_theta = j.value("fast_multipole_theta", fast_multipole_theta);
   }
 
   void InteractionParams::PrintParams() const 
@@ -45,6 +47,11 @@ namespace bdm
     {
       std::cout << "\nbarnes_hut_theta=" << barnes_hut_theta;
     }
+    else if (coulomb_method == "fast-multipole")
+    {
+      std::cout << "\nfast_multipole_order=" << fast_multipole_order ;
+      std::cout << "\nfast_multipole_theta=" << fast_multipole_theta ;
+    }
     std::cout << std::endl;
   }
 
@@ -54,7 +61,10 @@ namespace bdm
 
     if (method == CoulombMethod::kFastMultipole) 
     {
-      throw std::invalid_argument( "InteractionParams: coulomb_method 'fast-multipole' is recognized but NOT IMPLEMENTED yet. Use 'standard' or 'barnes-hut'.");
+      if (fast_multipole_theta < 0.0 || fast_multipole_theta > 1.0)
+      {
+        throw std::invalid_argument( "InteractionParams: fast_multipole_theta must be in [0, 1] (values above 1 could make a particle interact with its own tree node).");
+      }
     }
     if (!coulomb_enabled) { return; }
     if (method == CoulombMethod::kStandard && cutoff_radius <= 0.0) 

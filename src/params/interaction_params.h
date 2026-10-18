@@ -33,6 +33,9 @@ namespace bdm
 
     real_t barnes_hut_theta = 0.5;  // theta for Barnes-Hut algorithm, lies between 0 and 1. Smaller the value more accurate the analysis
 
+    real_t fast_multipole_order = 4;  // order for fmm, should ideally lie between 3 and 6, higher value leads to more accuracy but more computation time
+    real_t fast_multipole_theta = 0.5;  // theta for fast-multipole algorithm, lies between 0 and 1. Smaller the value more accurate the analysis
+
     CoulombMethod GetCoulombMethod() const;
 
     void LoadParams(const std::string& filename = "params.json");

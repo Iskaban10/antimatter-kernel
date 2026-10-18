@@ -14,7 +14,7 @@ namespace bdm
   {
     EnergyBreakdown result;
 
-    // Collect non-annihilated particles so that Coulomb pair loop below can index directly, 
+    // Collects non-annihilated particles so that Coulomb pair loop below can index directly, 
     // since an annihilated particle's kinetic/potential energy is not a part of the system's energy
 
     std::vector<ChargedAntiparticle*> particles;
@@ -49,7 +49,7 @@ namespace bdm
 
         const Real3 r_ij = particles[i]->GetPosition() - particles[j]->GetPosition();
         const real_t squared_distance = r_ij * r_ij;
-        if (squared_distance > squared_cutoff) { continue; } // outside the force model's cutoff -- see header note
+        if (squared_distance > squared_cutoff) { continue; } // outside the force model's cutoff
         if (squared_distance < 1e-30) { continue; }  // degenerate coincident pair; skip rather than divide by ~0
 
         const real_t distance = std::sqrt(squared_distance);

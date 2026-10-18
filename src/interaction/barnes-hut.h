@@ -45,7 +45,7 @@ namespace bdm
 
         size_t NumNodes() const { return nodes_.size(); }
 
-        private:
+        // private:
         struct Node 
         {
             Real3 center = {0.0, 0.0, 0.0};  // geometric center of the cube
@@ -74,3 +74,4 @@ namespace bdm
 
     void ComputeBarnesHutCoulombForces(ResourceManager* rm, real_t theta);
 }
+#endif

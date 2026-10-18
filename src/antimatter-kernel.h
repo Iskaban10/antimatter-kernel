@@ -73,11 +73,11 @@ namespace bdm
       Real3 position{offset(rng), offset(rng), offset(rng)};
       auto* particle = new ChargedAntiparticle(position, physics->species);
 
-      // CoulombInteraction sould e always called before LorentzForce
-      if (interaction->coulomb_enabled) { particle->AddBehavior(new CoulombInteraction()); }
+      // CoulombInteraction should be always called before LorentzForce
+      if (interaction->coulomb_enabled)  particle->AddBehavior(new CoulombInteraction());
       particle->AddBehavior(new LorentzForce(&field));
 
-      if (stochastic->annihilation_enabled) { particle->AddBehavior(new AnnihilationInteraction()); }
+      if (stochastic->annihilation_enabled)  particle->AddBehavior(new AnnihilationInteraction());
 
       rm->AddAgent(particle);
     }
@@ -88,14 +88,11 @@ namespace bdm
     std::ofstream energy_csv(energy_csv_path);
     if (!energy_csv.is_open()) 
     {
-      std::cerr << "WARNING: could not open '" << energy_csv_path
-                << "' for writing -- energy CSV will not be saved this run."
-                << std::endl;
+      std::cerr << "WARNING: could not open '" << energy_csv_path << "' for writing -- energy CSV will not be saved this run." << std::endl;
     } 
     else 
     {
-      energy_csv << "step,kinetic_energy_J,trap_potential_energy_J," "coulomb_potential_energy_J,total_energy_J,"
-                    "num_active_particles,fractional_drift\n";
+      energy_csv << "step,kinetic_energy_J,trap_potential_energy_J," "coulomb_potential_energy_J,total_energy_J," "num_active_particles,fractional_drift\n";
     }
 
     EnergyBreakdown initial_energy = ComputeTotalEnergy(rm, field, interaction->cutoff_radius);
