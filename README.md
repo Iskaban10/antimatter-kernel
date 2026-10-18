@@ -138,7 +138,7 @@ The characteristic trap dimension is derived internally as `d² = z0²/2 + rho0�
 | `coulomb_enabled` | true | - | Enables or disables the pairwise Coulomb interaction. Disable it to isolate single-particle (Lorentz-only) validation runs |
 | `cutoff_radius` | 1e-3 | m | Agents farther apart than this do not exert Coulomb force on each other. **There is no built-in default in the code (0 is rejected as invalid when Coulomb is enabled), so a value must be provided.** The shipped value is chosen to be much larger than the expected inter-particle spacing and much smaller than the trap dimensions; it should be revisited for different densities |
 | `barnes_hut_theta` | 0.5 | - | Sets the theta for the Barnes-Hut algorithm implementation, lies between 0 and 1 |
-| `fast_mulitpole_order` | 0.5 | - | Sets the order for the Fast-Multipole algorithm implementation, higher the value more accurate the results |
+| `fast_mulitpole_order` | 4 | - | Sets the order for the Fast-Multipole algorithm implementation, higher the value more accurate the results |
 | `fast_multipole_theta` | 0.5 | - | Sets the theta for the Fast-Multipole algorithm implementation, lies between 0 and 1 |
 
 ### Annihilation Parameters (`StochasticParams`)
