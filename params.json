@@ -5,17 +5,19 @@
   "z0": 0.01,
   "rho0": 0.01,
   "dt": 1e-12,
-  "num_steps": 500,
-  "num_particles": 100,
+  "num_steps": 5000,
+  "num_particles": 10000,
   "species": "positron",
   "initial_cloud_radius": 1e-4,
 
   "coulomb_enabled": true,
-  "coulomb_method": "barnes-hut",
+  "coulomb_method": "fast-multipole",
   "cutoff_radius": 1e-3,
   "barnes_hut_theta": 0.5,
+  "fast_multipole_order": 4,
+  "fast_multipole_theta": 0.5,
 
-  "annihilation_enabled": false,
-  "contact_radius": 1e-9,
-  "annihilation_probability": 0.9
+  "annihilation_enabled": true,
+  "contact_radius": 1e-7,
+  "annihilation_probability": 1
 }

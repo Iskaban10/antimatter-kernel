@@ -17,8 +17,9 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
-#include <chrono>
+#include <limits>
 #include <random>
+#include <chrono>
 
 #include "biodynamo.h"
 
@@ -28,7 +29,9 @@
 #include "fields/penning_trap.h"
 #include "forces/lorentz.h"
 #include "interaction/annihilation.h"
+#include "interaction/barnes-hut.h"
 #include "interaction/coulomb_interaction.h"
+#include "interaction/fast-multipole.h"
 #include "params/interaction_params.h"
 #include "params/physics_params.h"
 #include "params/stochastic_params.h"
@@ -37,20 +40,20 @@ namespace bdm
 {
   inline int Simulate(int argc, const char** argv) 
   {
+    auto start_time = std::chrono::high_resolution_clock::now();
+    // Parameters that are to be loaded for simulation
     Param::RegisterParamGroup(new PhysicsParams());
     Param::RegisterParamGroup(new InteractionParams());
     Param::RegisterParamGroup(new StochasticParams());
 
     Simulation simulation(
-        argc, argv, [](Param* param) 
-        {
+        argc, argv, [](Param* param) {
           param->Get<PhysicsParams>()->LoadParams("params.json");
           param->Get<InteractionParams>()->LoadParams("params.json");
           param->Get<StochasticParams>()->LoadParams("params.json");
         });
     auto* rm = simulation.GetResourceManager();
-    
-    const auto start_time = std::chrono::steady_clock::now();
+
     const auto* physics = simulation.GetParam()->Get<PhysicsParams>();
     const auto* interaction = simulation.GetParam()->Get<InteractionParams>();
     const auto* stochastic = simulation.GetParam()->Get<StochasticParams>();
@@ -63,6 +66,12 @@ namespace bdm
     interaction->PrintParams();
     stochastic->PrintParams();
 
+    const CoulombMethod coulomb_method = interaction->GetCoulombMethod();
+    const bool use_barnes_hut = interaction->coulomb_enabled && coulomb_method == CoulombMethod::kBarnesHut;
+    const bool use_fast_multipole = interaction->coulomb_enabled && coulomb_method == CoulombMethod::kFastMultipole;
+
+    const real_t energy_cutoff_radius = !interaction->coulomb_enabled ? static_cast<real_t>(0.0) : (coulomb_method == CoulombMethod::kStandard ? interaction->cutoff_radius : std::numeric_limits<real_t>::infinity());
+
     PenningTrapField field = PenningTrapField::MakeFromGeometry( physics->b0, physics->trap_voltage, physics->z0, physics->rho0);
 
     std::default_random_engine rng(physics->seed);
@@ -73,16 +82,16 @@ namespace bdm
       Real3 position{offset(rng), offset(rng), offset(rng)};
       auto* particle = new ChargedAntiparticle(position, physics->species);
 
-      // CoulombInteraction should be always called before LorentzForce
-      if (interaction->coulomb_enabled)  particle->AddBehavior(new CoulombInteraction());
+      if (interaction->coulomb_enabled && coulomb_method == CoulombMethod::kStandard)   particle->AddBehavior(new CoulombInteraction());
+
       particle->AddBehavior(new LorentzForce(&field));
 
-      if (stochastic->annihilation_enabled)  particle->AddBehavior(new AnnihilationInteraction());
+      if (stochastic->annihilation_enabled)   particle->AddBehavior(new AnnihilationInteraction());
 
       rm->AddAgent(particle);
     }
 
-    const int energy_log_interval = physics->num_steps >= 100 ? physics->num_steps / 100 : 1; // logged every 1% interval of the run
+    const int energy_log_interval = physics->num_steps >= 100 ? physics->num_steps / 100 : 1; // aprrox 1 % of number of steps
 
     const std::string energy_csv_path = simulation.GetOutputDir() + "/energy_analysis.csv";
     std::ofstream energy_csv(energy_csv_path);
@@ -92,16 +101,14 @@ namespace bdm
     } 
     else 
     {
-      energy_csv << "step,kinetic_energy_J,trap_potential_energy_J," "coulomb_potential_energy_J,total_energy_J," "num_active_particles,fractional_drift\n";
+      energy_csv << "step,kinetic_energy_J,trap_potential_energy_J,coulomb_potential_energy_J,total_energy_J,num_active_particles,fractional_drift\n";
     }
 
-    EnergyBreakdown initial_energy = ComputeTotalEnergy(rm, field, interaction->cutoff_radius);
-
-    std::cout << "\nstep 0  KE=" << initial_energy.kinetic
+    EnergyBreakdown initial_energy = ComputeTotalEnergy(rm, field, energy_cutoff_radius);
+    std::cout << "step 0  KE=" << initial_energy.kinetic
               << " PE_trap=" << initial_energy.trap_potential
               << " PE_coulomb=" << initial_energy.coulomb_potential
               << " TOTAL=" << initial_energy.Total() << " J" << std::endl;
-
     if (energy_csv.is_open()) 
     {
       energy_csv << 0 << "," << initial_energy.kinetic << ","
@@ -113,11 +120,14 @@ namespace bdm
 
     for (int step = 1; step <= physics->num_steps; ++step) 
     {
+      if (use_barnes_hut)   ComputeBarnesHutCoulombForces(rm, interaction->barnes_hut_theta);
+      else if (use_fast_multipole)  ComputeFastMultipoleCoulombForces(rm, interaction->fast_multipole_order, interaction->fast_multipole_theta);
+
       simulation.GetScheduler()->Simulate(1);
 
       if (step % energy_log_interval == 0 || step == physics->num_steps) 
       {
-        EnergyBreakdown e = ComputeTotalEnergy(rm, field, interaction->cutoff_radius);
+        EnergyBreakdown e = ComputeTotalEnergy(rm, field, energy_cutoff_radius);
         const real_t fractional_drift = initial_energy.Total() != 0.0
                 ? (e.Total() - initial_energy.Total()) / std::abs(initial_energy.Total())
                 : 0.0;
@@ -127,7 +137,8 @@ namespace bdm
                   << " TOTAL=" << e.Total() << " J"
                   << "  (fractional drift from step 0: " << fractional_drift
                   << ")" << std::endl;
-
+        
+        // write energy log results to the csv file
         if (energy_csv.is_open()) 
         {
           energy_csv << step << "," << e.kinetic << "," << e.trap_potential
@@ -147,16 +158,17 @@ namespace bdm
     rm->ForEachAgent([](Agent* agent) 
     {
       auto* particle = FastCast(agent);
-      if (particle == nullptr) { return; }
+      if (particle == nullptr)  return;
       const auto& pos = particle->GetPosition();
       std::cout << "final position: (" << pos[0] << ", " << pos[1] << ", " << pos[2] << ")" << std::endl;
     });
 
-    const auto end_time = std::chrono::steady_clock::now();
-    std::chrono::duration<double> elapsed = end_time - start_time;
+    auto end_time = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> simulation_duration = end_time - start_time;
     std::cout << "Simulation completed successfully!" << std::endl;
-    std::cout << "Total time taken for simulation "<< elapsed.count()<<"seconds\n";
+    std::cout << "Time taken "<< simulation_duration << "s" << std::endl;
     return 0;
   }
 }
+
 #endif
