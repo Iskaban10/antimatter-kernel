@@ -114,8 +114,7 @@ These are the parameters most commonly changed when designing a run.
 | Parameter | Default | Units | Description |
 |-----------|---------|-------|-------------|
 | `seed` | 42 | - | Seed for the random placement of the initial particle cloud, for reproducibility |
-| `species` | `"positron"` | - | Species of every seeded particle: `antiproton`, `positron`, `antihydrogen`, `electron` or `proton` |
-| `num_particles` | 10 | - | Number of particles seeded at the start |
+| `particle_populations` | `{ "positron": 100, "electron": 100 }` | - | Species of every seeded particle: `antiproton`, `positron`, `antihydrogen`, `electron` or `proton` along with their respective population count|
 | `initial_cloud_radius` | 1e-4 | m | Particles are placed at random positions within ± this distance of the trap center. Must be well inside `z0` and `rho0` |
 | `dt` | 1e-12 | s | Integration timestep. Must be much smaller than the cyclotron period 2πm / (\|q\|B₀) (about 36 steps per period by default) |
 | `num_steps` | 50000 | - | Number of simulation steps. Total simulated time is `dt × num_steps` |
@@ -160,12 +159,14 @@ To modify parameters, edit [`params.json`](params.json). Only include the parame
 ```json
 {
   "seed": 42,
-  "species": "positron",
-  "num_particles": 10,
-  "dt": 1e-12,
-  "num_steps": 50000,
   "b0": 1.0,
   "trap_voltage": 10.0,
+  "z0": 0.01,
+  "rho0": 0.01,
+  "dt": 1e-12,
+  "num_steps": 500,
+  "particle_populations": { "positron": 100, "electron": 100 },
+  "initial_cloud_radius": 1e-4,
 
   "coulomb_enabled": true,
   "coulomb_method": "standard",
