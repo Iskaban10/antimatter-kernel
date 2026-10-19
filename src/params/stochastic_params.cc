@@ -22,8 +22,7 @@ namespace bdm
     file >> j;
     annihilation_enabled = j.value("annihilation_enabled", annihilation_enabled);
     contact_radius = j.value("contact_radius", contact_radius);
-    annihilation_probability =
-        j.value("annihilation_probability", annihilation_probability);
+    annihilation_probability = j.value("annihilation_probability", annihilation_probability);
   }
 
   void StochasticParams::PrintParams() const 

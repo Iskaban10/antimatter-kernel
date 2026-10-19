@@ -2,6 +2,7 @@
 #define PARAMS_PHYSICS_PARAMS_H_
 
 #include <string>
+#include <map>
 
 #include "agents/particle_species.h"
 #include "core/param/param_group.h"
@@ -38,7 +39,7 @@ namespace bdm
 
     // --- Initial particle cloud ------------------------------------------------
     int num_particles = 10;
-    ParticleSpecies species = ParticleSpecies::kPositron;
+    std::map<ParticleSpecies, int> populations = {{ParticleSpecies::kPositron, 10}};
     real_t initial_cloud_radius = 1e-4;
 
     void LoadParams(const std::string& filename = "params.json"); // loads params.json
@@ -47,7 +48,5 @@ namespace bdm
     // Throws std::invalid_argument on an obviously invalid configuration.
     void Validate() const;
   };
-
 }
-
-#endif  // PARAMS_PHYSICS_PARAMS_H_
+#endif

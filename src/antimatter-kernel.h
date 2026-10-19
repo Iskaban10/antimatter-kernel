@@ -77,18 +77,22 @@ namespace bdm
     std::default_random_engine rng(physics->seed);
     std::uniform_real_distribution<real_t> offset(-physics->initial_cloud_radius, physics->initial_cloud_radius);
 
-    for (int i = 0; i < physics->num_particles; ++i) 
+    for (const auto& [species, count] : physics->populations) 
     {
-      Real3 position{offset(rng), offset(rng), offset(rng)};
-      auto* particle = new ChargedAntiparticle(position, physics->species);
+      for (int i = 0; i < count; i++) 
+      {
+        Real3 position{offset(rng), offset(rng), offset(rng)};
+        auto* particle = new ChargedAntiparticle(position, species);
 
-      if (interaction->coulomb_enabled && coulomb_method == CoulombMethod::kStandard)   particle->AddBehavior(new CoulombInteraction());
+        if (interaction->coulomb_enabled && coulomb_method == CoulombMethod::kStandard)
+          particle->AddBehavior(new CoulombInteraction());
 
-      particle->AddBehavior(new LorentzForce(&field));
+        particle->AddBehavior(new LorentzForce(&field));
 
-      if (stochastic->annihilation_enabled)   particle->AddBehavior(new AnnihilationInteraction());
+        if (stochastic->annihilation_enabled)   particle->AddBehavior(new AnnihilationInteraction());
 
-      rm->AddAgent(particle);
+        rm->AddAgent(particle);
+      }
     }
 
     const int energy_log_interval = physics->num_steps >= 100 ? physics->num_steps / 100 : 1; // aprrox 1 % of number of steps
@@ -135,8 +139,7 @@ namespace bdm
                   << " PE_trap=" << e.trap_potential
                   << " PE_coulomb=" << e.coulomb_potential
                   << " TOTAL=" << e.Total() << " J"
-                  << "  (fractional drift from step 0: " << fractional_drift
-                  << ")" << std::endl;
+                  << "  (fractional drift from step 0: " << fractional_drift << ")" << std::endl;
         
         // write energy log results to the csv file
         if (energy_csv.is_open()) 
@@ -166,7 +169,7 @@ namespace bdm
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> simulation_duration = end_time - start_time;
     std::cout << "Simulation completed successfully!" << std::endl;
-    std::cout << "Time taken "<< simulation_duration << "s" << std::endl;
+    std::cout << "Time taken "<< simulation_duration.count() << "s" << std::endl;
     return 0;
   }
 }

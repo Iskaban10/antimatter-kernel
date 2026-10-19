@@ -21,11 +21,11 @@ namespace bdm
   void AnnihilationInteraction::Run(Agent* agent) 
   {
     auto* particle = FastCast(agent);
-    if (particle == nullptr) { return; }
+    if (particle == nullptr)    return;
 
     const auto* stochastic_params = Simulation::GetActive()->GetParam()->Get<StochasticParams>();
 
-    if (!stochastic_params->annihilation_enabled) { return; } // return if annihilation not enabled
+    if (!stochastic_params->annihilation_enabled)  return;   // return if annihilation not enabled
     if (particle->IsAnnihilated()) 
     {
       particle->RemoveFromSimulation();
@@ -33,7 +33,7 @@ namespace bdm
     }
 
     const real_t contact_radius = stochastic_params->contact_radius;
-    if (contact_radius <= 0.0) { return; }
+    if (contact_radius <= 0.0)   return;
     const real_t annihilation_probability = stochastic_params->annihilation_probability;
 
     const ParticleSpecies species_i = particle->GetSpecies();
@@ -42,10 +42,10 @@ namespace bdm
 
     auto check_partner = L2F([&](Agent* neighbor, real_t squared_distance) 
     {
-      if (paired_this_step || neighbor == agent) { return; }
+      if (paired_this_step || neighbor == agent)  return;
       auto* other = FastCast(neighbor);
-      if (other == nullptr || other->IsAnnihilated()) { return; }
-      if (!IsAntiparticlePair(species_i, other->GetSpecies())) { return; }
+      if (other == nullptr || other->IsAnnihilated())   return;
+      if (!IsAntiparticlePair(species_i, other->GetSpecies()))  return;
 
       auto* random = Simulation::GetActive()->GetRandom();
       if (random->Uniform(0.0, 1.0) < annihilation_probability) 

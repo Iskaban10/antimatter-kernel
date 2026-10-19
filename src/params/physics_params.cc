@@ -4,7 +4,7 @@
 #include <iostream>
 #include <stdexcept>
 
-#include "json.hpp"  // nlohmann::json, flat at the BDM include root
+#include "json.hpp"
 
 namespace bdm 
 {
@@ -18,8 +18,7 @@ namespace bdm
       if (name == "antihydrogen") return ParticleSpecies::kAntihydrogen;
       if (name == "electron") return ParticleSpecies::kElectron;
       if (name == "proton") return ParticleSpecies::kProton;
-      throw std::invalid_argument(
-          "PhysicsParams::LoadParams: unrecognized species name '" + name + "'");
+      throw std::invalid_argument("PhysicsParams::LoadParams: unrecognized species name '" + name + "'");
     }
 
     std::string SpeciesToString(ParticleSpecies species) 
@@ -53,17 +52,23 @@ namespace bdm
     z0 = j.value("z0", z0);
     rho0 = j.value("rho0", rho0);
     dt = j.value("dt", dt);
+
+    if (j.contains("particle_populations")) 
+    {
+      populations.clear();
+      for (const auto& [name, count] : j.at("particle_populations").items()) 
+      {
+        populations[ParseSpecies(name)] = count.get<int>();
+      }
+    }
+
     num_steps = j.value("num_steps", num_steps);
-    num_particles = j.value("num_particles", num_particles);
     initial_cloud_radius = j.value("initial_cloud_radius", initial_cloud_radius);
-    if (j.contains("species")) { species = ParseSpecies(j.at("species").get<std::string>()); }
   }
 
   void PhysicsParams::PrintParams() const 
   {
     std::cout << "\n[physics] \nseed=" << seed
-              << "\nspecies=" << SpeciesToString(species)
-              << "\nnum_particles=" << num_particles
               << "\ninitial_cloud_radius=" << initial_cloud_radius << " m"
               << "\nb0=" << b0 << " T"
               << "\ntrap_voltage=" << trap_voltage << " V"
@@ -71,6 +76,13 @@ namespace bdm
               << "\nrho0=" << rho0 << " m"
               << "\ndt=" << dt << " s"
               << "\nnum_steps=" << num_steps << std::endl;
+
+    std::cout << "Particle populations: \t";
+    for (const auto& [species, count] : populations) 
+    {
+      std::cout << "population: " << SpeciesToString(species) << " x \t" << count;
+    }
+    std::cout<<'\n';
   }
 
   void PhysicsParams::Validate() const 
@@ -81,8 +93,13 @@ namespace bdm
     if (dt <= 0.0) throw std::invalid_argument("PhysicsParams: dt must be > 0");
     if (num_steps <= 0)
       throw std::invalid_argument("PhysicsParams: num_steps must be > 0");
-    if (num_particles <= 0)
-      throw std::invalid_argument("PhysicsParams: num_particles must be > 0");
+    if (populations.empty())
+      throw std::invalid_argument("PhysicsParams: populations must not be empty");
+    for (const auto& [species, count] : populations) 
+    {
+      if (count < 0)
+        throw std::invalid_argument("PhysicsParams: every population count must be > 0");
+    }
     if (initial_cloud_radius <= 0.0 || initial_cloud_radius >= z0 || initial_cloud_radius >= rho0) 
     {
       throw std::invalid_argument( "PhysicsParams: initial_cloud_radius must be > 0 and well inside " "(z0, rho0)");
