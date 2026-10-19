@@ -174,7 +174,9 @@ To modify parameters, edit [`params.json`](params.json). Only include the parame
   "fast_multipole_order": 4,
   "fast_multipole_theta": 0.5,
 
-  "annihilation_enabled": false
+  "annihilation_enabled": false,
+  "contact_radius": 1e-7,
+  "annihilation_probability": 1
 }
 ```
 
