@@ -1,97 +1,38 @@
-name: BioDynaMo Build & Run Check
-
-on:
-  pull_request:
-    branches: main
-
 jobs:
-  pr-validation:
+  build-and-run:
     runs-on: ubuntu-22.04
-
+    container:
+      image: ghcr.io/<your-lowercase-owner>/bdm-ci:1
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Checkout PR Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install System Dependencies
+      - name: Fetch trusted CI config from base branch
+        env:
+          BASE_REF: ${{ github.base_ref || github.ref_name }}
         run: |
-          sudo apt-get update
-          sudo apt-get install -y curl git build-essential libqt5widgets5 libqt5gui5 libqt5core5a
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git fetch --no-tags --depth=1 origin "$BASE_REF"
+          mkdir -p /tmp/ci-config
+          for f in params.json bdm.toml; do
+            git show "FETCH_HEAD:ci/$f" > "/tmp/ci-config/$f"
+          done
 
-      - name: Cache BioDynaMo Framework
-        id: cache-bdm
-        uses: actions/cache@v4
-        with:
-          path: ~/biodynamo
-          key: ${{ runner.os }}-biodynamo-v1
-
-      - name: Download and Install BioDynaMo (Cache Miss)
-        if: steps.cache-bdm.outputs.cache-hit != 'true'
+      - name: Overwrite PR config with trusted CI config
         run: |
-          rm -rf ~/biodynamo-*
-          
-          # Force the installer to use a specific stable version instead of guessing via git
-          export BDM_INSTALL="v1.04"
-          
-          curl https://biodynamo.github.io/install | bash
+          cp /tmp/ci-config/params.json ./params.json   # adjust destination
+          cp /tmp/ci-config/bdm.toml    ./bdm.toml      # adjust destination
 
-      - name: Verify Environment and Build Project
+      - name: biodynamo build
+        shell: bash
         run: |
-          # Inject BioDynaMo binaries into the system PATH
-          echo "$HOME/biodynamo/bin" >> $GITHUB_PATH
-          
-          # Initialize environment and trigger the build check
-          source $HOME/biodynamo-vX.Y.Z/bin/thisbdm.sh
+          source "$BDM_ENV"
           biodynamo build
 
-      # --- BACKUP & WRITE CUSTOM PARAMS ---
-      - name: Swap params.json safely for CI
+      - name: biodynamo run
+        shell: bash
         run: |
-          # If the user provided a params.json, back it up to a temporary location
-          if [ -f params.json ]; then
-            mv params.json params.json.bak
-          fi
-
-          # Write your strict CI parameters to test the simulation
-          cat << 'EOF' > params.json
-          {
-            "seed": 42,
-            "b0": 1.0,
-            "trap_voltage": 10.0,
-            "z0": 0.01,
-            "rho0": 0.01,
-            "dt": 1e-9,
-            "num_steps": 50,
-            "particle_populations": { "positron": 50, "electron": 50 },
-            "initial_cloud_radius": 1e-4,
-
-            "coulomb_enabled": true,
-            "coulomb_method": "fast-multipole",
-            "cutoff_radius": 1e-3,
-            "barnes_hut_theta": 0.5,
-            "fast_multipole_order": 4,
-            "fast_multipole_theta": 0.5,
-
-            "annihilation_enabled": true,
-            "contact_radius": 1e-9,
-            "annihilation_probability": 1
-          }
-          EOF
-
-      # --- EXECUTE RUNTIME TEST ---
-      - name: Execute Simulation Test Run
-        run: |
-          source $HOME/biodynamo-vX.Y.Z/bin/thisbdm.sh
-          biodynamo run
-
-      # --- RESTORE ORIGINAL PARAMS ---
-      # This step always runs even if the previous 'biodynamo run' fails
-      - name: Restore original user params.json
-        if: always()
-        run: |
-          if [ -f params.json.bak ]; then
-            mv params.json.bak params.json
-            echo "Original user params.json restored successfully."
-          else
-            # If the user didn't have one, clean up the CI-generated one
-            rm -f params.json
-          fi
+          source "$BDM_ENV"
+          xvfb-run -a biodynamo run

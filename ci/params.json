@@ -1,0 +1,22 @@
+{
+  "seed": 42,
+  "b0": 1.0,
+  "trap_voltage": 10.0,
+  "z0": 0.01,
+  "rho0": 0.01,
+  "dt": 1e-9,
+  "num_steps": 50,
+  "particle_populations": { "positron": 50, "electron": 50 },
+  "initial_cloud_radius": 1e-4,
+
+  "coulomb_enabled": true,
+  "coulomb_method": "fast-multipole",
+  "cutoff_radius": 1e-3,
+  "barnes_hut_theta": 0.5,
+  "fast_multipole_order": 4,
+  "fast_multipole_theta": 0.5,
+
+  "annihilation_enabled": true,
+  "contact_radius": 1e-7,
+  "annihilation_probability": 1
+}

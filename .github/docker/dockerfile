@@ -1,0 +1,15 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+        sudo curl git ca-certificates tzdata xvfb \
+    && rm -rf /var/lib/apt/lists/*
+
+# Official installer. Installs to $HOME/biodynamo-<version> (HOME=/root here)
+RUN curl https://biodynamo.github.io/install | bash
+
+# Stable path, because the installed folder name contains the version
+RUN ln -s "$(ls -d /root/biodynamo-* | head -n 1)" /opt/biodynamo
+
+ENV BDM_ENV=/opt/biodynamo/bin/thisbdm.sh
