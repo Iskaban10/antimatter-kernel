@@ -2,7 +2,7 @@ name: BioDynaMo Build & Run Check
 
 on:
   pull_request:
-    branches: [ main, master ]
+    branches: main
 
 jobs:
   pr-validation:
@@ -27,6 +27,11 @@ jobs:
       - name: Download and Install BioDynaMo (Cache Miss)
         if: steps.cache-bdm.outputs.cache-hit != 'true'
         run: |
+          rm -rf ~/biodynamo-*
+          
+          # Force the installer to use a specific stable version instead of guessing via git
+          export BDM_INSTALL="v1.04"
+          
           curl https://biodynamo.github.io/install | bash
 
       - name: Verify Environment and Build Project
