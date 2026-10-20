@@ -14,7 +14,7 @@ jobs:
   build-and-run:
     runs-on: ubuntu-22.04
     container:
-      image: ghcr.io/<your-lowercase-owner>/bdm-ci:1
+      image: ghcr.io/iskaban10/bdm-ci:1
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}

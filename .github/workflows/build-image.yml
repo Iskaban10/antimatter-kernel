@@ -27,5 +27,5 @@ jobs:
           context: .github/docker
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/bdm-ci:1
-            ghcr.io/${{ github.repository_owner }}/bdm-ci:latest
+            ghcr.io/iskaban10/bdm-ci:1
+            ghcr.io/iskaban10/bdm-ci:latest
