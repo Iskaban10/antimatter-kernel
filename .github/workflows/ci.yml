@@ -38,8 +38,8 @@ jobs:
       - name: biodynamo build
         shell: bash
         run: |
-          source "$(ls -d $HOME/biodynamo-*/bin/thisbdm.sh | head -n 1)"
-          biodynamo build
+          curl -fsSL https://biodynamo.github.io/install \
+            | env -i HOME="$HOME" PATH="$PATH" DEBIAN_FRONTEND=noninteractive bash
 
       - name: biodynamo run
         shell: bash
