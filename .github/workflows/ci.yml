@@ -1,50 +1,48 @@
-name: BioDynaMo build and run
+name: biodyanmo build and run
 
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [main]
-
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   build-and-run:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
     container:
-      image: ghcr.io/iskaban10/bdm-ci:1
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+      image: ubuntu:20.04
+      env:
+        DEBIAN_FRONTEND: noninteractive
+
     steps:
+      - name: Install system packages
+        run: |
+          apt-get update
+          apt-get install -y sudo curl wget git ca-certificates tzdata xvfb \
+            bsdmainutils lsb-release gnupg
+
       - uses: actions/checkout@v4
 
-      - name: Fetch trusted CI config from base branch
+      - name: Use CI config from the base branch
         env:
-          BASE_REF: ${{ github.base_ref || github.ref_name }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git fetch --no-tags --depth=1 origin "$BASE_REF"
-          mkdir -p /tmp/ci-config
-          for f in params.json bdm.toml; do
-            git show "FETCH_HEAD:ci/$f" > "/tmp/ci-config/$f"
-          done
+          git checkout FETCH_HEAD -- ci/params.json ci/bdm.toml
+          cp ci/params.json ./params.json   # adjust destination to where your code reads it
+          cp ci/bdm.toml    ./bdm.toml      # adjust destination
 
-      - name: Overwrite PR config with trusted CI config
-        run: |
-          cp /tmp/ci-config/params.json ./params.json   # adjust destination
-          cp /tmp/ci-config/bdm.toml    ./bdm.toml      # adjust destination
+      - name: Install BioDynaMo
+        run: curl https://biodynamo.github.io/install | bash
 
       - name: biodynamo build
         shell: bash
         run: |
-          source "$BDM_ENV"
+          source "$(ls -d $HOME/biodynamo-*/bin/thisbdm.sh | head -n 1)"
           biodynamo build
 
       - name: biodynamo run
         shell: bash
         run: |
-          source "$BDM_ENV"
+          source "$(ls -d $HOME/biodynamo-*/bin/thisbdm.sh | head -n 1)"
           xvfb-run -a biodynamo run
