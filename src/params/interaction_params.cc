@@ -39,18 +39,18 @@ namespace bdm
 
   void InteractionParams::PrintParams() const 
   {
-    std::cout << "\n[interaction] coulomb_enabled=" << (coulomb_enabled ? "true" : "false") << "\ncoulomb_method=" << coulomb_method;
+    std::cout << "\n[interaction] coulomb_enabled = " << (coulomb_enabled ? "true" : "false") << "\ncoulomb_method = " << coulomb_method;
     if (coulomb_method == "standard") 
     {
-      std::cout << "\ncutoff_radius=" << cutoff_radius << " m";
+      std::cout << "\ncutoff_radius = " << cutoff_radius << " m";
     } 
     else if (coulomb_method == "barnes-hut") 
     {
-      std::cout << "\nbarnes_hut_theta=" << barnes_hut_theta;
+      std::cout << "\nbarnes_hut_theta = " << barnes_hut_theta;
     } 
     else if (coulomb_method == "fast-multipole") 
     {
-      std::cout << "\nfast_multipole_order=" << fast_multipole_order << "\nfast_multipole_theta=" << fast_multipole_theta;
+      std::cout << "\nfast_multipole_order = " << fast_multipole_order << "\nfast_multipole_theta = " << fast_multipole_theta;
     }
     std::cout << std::endl;
   }

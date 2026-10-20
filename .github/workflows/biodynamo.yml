@@ -1,0 +1,92 @@
+name: BioDynaMo PR Build & Run Check
+
+on:
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  pr-validation:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout PR Code
+        uses: actions/checkout@v4
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl git build-essential libqt5widgets5 libqt5gui5 libqt5core5a
+
+      - name: Cache BioDynaMo Framework
+        id: cache-bdm
+        uses: actions/cache@v4
+        with:
+          path: ~/biodynamo
+          key: ${{ runner.os }}-biodynamo-v1
+
+      - name: Download and Install BioDynaMo (Cache Miss)
+        if: steps.cache-bdm.outputs.cache-hit != 'true'
+        run: |
+          curl https://github.io | bash
+
+      - name: Verify Environment and Build Project
+        run: |
+          # Inject BioDynaMo binaries into the system PATH
+          echo "$HOME/biodynamo/bin" >> $GITHUB_PATH
+          
+          # Initialize environment and trigger the build check
+          . $HOME/biodynamo/bin/thisbiodynamo.sh
+          biodynamo build
+
+      # --- BACKUP & WRITE CUSTOM PARAMS ---
+      - name: Swap params.json safely for CI
+        run: |
+          # If the user provided a params.json, back it up to a temporary location
+          if [ -f params.json ]; then
+            mv params.json params.json.bak
+          fi
+
+          # Write your strict CI parameters to test the simulation
+          cat << 'EOF' > params.json
+          {
+            "seed": 42,
+            "b0": 1.0,
+            "trap_voltage": 10.0,
+            "z0": 0.01,
+            "rho0": 0.01,
+            "dt": 1e-9,
+            "num_steps": 50,
+            "particle_populations": { "positron": 50, "electron": 50 },
+            "initial_cloud_radius": 1e-4,
+
+            "coulomb_enabled": true,
+            "coulomb_method": "fast-multipole",
+            "cutoff_radius": 1e-3,
+            "barnes_hut_theta": 0.5,
+            "fast_multipole_order": 4,
+            "fast_multipole_theta": 0.5,
+
+            "annihilation_enabled": true,
+            "contact_radius": 1e-9,
+            "annihilation_probability": 1
+          }
+          EOF
+
+      # --- EXECUTE RUNTIME TEST ---
+      - name: Execute Simulation Test Run
+        run: |
+          . $HOME/biodynamo/bin/thisbiodynamo.sh
+          biodynamo run
+
+      # --- RESTORE ORIGINAL PARAMS ---
+      # This step always runs even if the previous 'biodynamo run' fails
+      - name: Restore original user params.json
+        if: always()
+        run: |
+          if [ -f params.json.bak ]; then
+            mv params.json.bak params.json
+            echo "Original user params.json restored successfully."
+          else
+            # If the user didn't have one, clean up the CI-generated one
+            rm -f params.json
+          fi

@@ -68,19 +68,19 @@ namespace bdm
 
   void PhysicsParams::PrintParams() const 
   {
-    std::cout << "\n[physics] \nseed=" << seed
-              << "\ninitial_cloud_radius=" << initial_cloud_radius << " m"
-              << "\nb0=" << b0 << " T"
-              << "\ntrap_voltage=" << trap_voltage << " V"
-              << "\nz0=" << z0 << " m"
-              << "\nrho0=" << rho0 << " m"
-              << "\ndt=" << dt << " s"
-              << "\nnum_steps=" << num_steps << std::endl;
+    std::cout << "\n[physics] \nseed = " << seed
+              << "\ninitial_cloud_radius = " << initial_cloud_radius << " m"
+              << "\nb0 = " << b0 << " T"
+              << "\ntrap_voltage = " << trap_voltage << " V"
+              << "\nz0 = " << z0 << " m"
+              << "\nrho0 = " << rho0 << " m"
+              << "\ndt = " << dt << " s"
+              << "\nnum_steps = " << num_steps << std::endl;
 
-    std::cout << "Particle populations: \t";
+    std::cout << "Particle populations:";
     for (const auto& [species, count] : populations) 
     {
-      std::cout << "population: " << SpeciesToString(species) << " x \t" << count;
+      std::cout << "\t(" << SpeciesToString(species) << " x " << count << ")";
     }
     std::cout<<'\n';
   }

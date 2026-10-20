@@ -109,10 +109,10 @@ namespace bdm
     }
 
     EnergyBreakdown initial_energy = ComputeTotalEnergy(rm, field, energy_cutoff_radius);
-    std::cout << "step 0  KE=" << initial_energy.kinetic
-              << " PE_trap=" << initial_energy.trap_potential
-              << " PE_coulomb=" << initial_energy.coulomb_potential
-              << " TOTAL=" << initial_energy.Total() << " J" << std::endl;
+    std::cout << "\nstep 0  KE=" << initial_energy.kinetic
+              << " | PE_trap=" << initial_energy.trap_potential
+              << " | PE_coulomb=" << initial_energy.coulomb_potential
+              << " | TOTAL=" << initial_energy.Total() << " J" << std::endl;
     if (energy_csv.is_open()) 
     {
       energy_csv << 0 << "," << initial_energy.kinetic << ","
@@ -136,10 +136,10 @@ namespace bdm
                 ? (e.Total() - initial_energy.Total()) / std::abs(initial_energy.Total())
                 : 0.0;
         std::cout << "step " << step << "  KE=" << e.kinetic
-                  << " PE_trap=" << e.trap_potential
-                  << " PE_coulomb=" << e.coulomb_potential
-                  << " TOTAL=" << e.Total() << " J"
-                  << "  (fractional drift from step 0: " << fractional_drift << ")" << std::endl;
+                  << " | PE_trap=" << e.trap_potential
+                  << " | PE_coulomb=" << e.coulomb_potential
+                  << " | TOTAL=" << e.Total() << " J"
+                  << " | (fractional drift from step 0: " << fractional_drift << ")" << std::endl;
         
         // write energy log results to the csv file
         if (energy_csv.is_open()) 

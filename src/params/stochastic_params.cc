@@ -27,9 +27,9 @@ namespace bdm
 
   void StochasticParams::PrintParams() const 
   {
-    std::cout << "\n[stochastic] \nannihilation_enabled=" << (annihilation_enabled ? "true" : "false")
-              << " \ncontact_radius=" << contact_radius << " m"
-              << " \nannihilation_probability=" << annihilation_probability << std::endl;
+    std::cout << "\n[stochastic] \nannihilation_enabled = " << (annihilation_enabled ? "true" : "false")
+              << " \ncontact_radius = " << contact_radius << " m"
+              << " \nannihilation_probability = " << annihilation_probability << std::endl;
   }
 
   void StochasticParams::Validate() const 
