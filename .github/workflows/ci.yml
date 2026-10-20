@@ -35,8 +35,10 @@ jobs:
       - name: Install BioDynaMo
         shell: bash
         run: |
-          curl -fsSL https://biodynamo.github.io/install \
-            | env -i HOME="$HOME" PATH="$PATH" DEBIAN_FRONTEND=noninteractive bash
+          curl -fsSL https://biodynamo.github.io/install -o /tmp/bdm-install.sh
+          printf 'y\n%.0s' $(seq 1 50) | env -i HOME="$HOME" PATH="$PATH" \
+            DEBIAN_FRONTEND=noninteractive TERM=xterm \
+            script -qec "bash /tmp/bdm-install.sh" /dev/null
 
       - name: biodynamo build
         shell: bash
