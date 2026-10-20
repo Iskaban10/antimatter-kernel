@@ -1,0 +1,14 @@
+[simulation]
+output_dir = "output"
+environment = "octree"
+nanoflann_depth = 10
+unschedule_default_operations = ["load balancing"]
+
+[visualization]
+export = false
+export_generate_pvsm = false
+interval = 10
+
+  [[visualize_agent]]
+  name = "ChargedAntiparticle"
+  
