@@ -33,7 +33,10 @@ jobs:
           cp ci/bdm.toml    ./bdm.toml      # adjust destination
 
       - name: Install BioDynaMo
-        run: curl https://biodynamo.github.io/install | bash
+        shell: bash
+        run: |
+          curl -fsSL https://biodynamo.github.io/install \
+            | env -i HOME="$HOME" PATH="$PATH" DEBIAN_FRONTEND=noninteractive bash
 
       - name: biodynamo build
         shell: bash
