@@ -3,7 +3,8 @@ FROM ubuntu:20.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y \
-        sudo curl git ca-certificates tzdata xvfb \
+        sudo curl wget git ca-certificates tzdata xvfb \
+        bsdmainutils lsb-release gnupg \
     && rm -rf /var/lib/apt/lists/*
 
 # Official installer. Installs to $HOME/biodynamo-<version> (HOME=/root here)
