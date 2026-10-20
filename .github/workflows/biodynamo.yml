@@ -1,4 +1,4 @@
-name: BioDynaMo PR Build & Run Check
+name: BioDynaMo Build & Run Check
 
 on:
   pull_request:
@@ -27,7 +27,7 @@ jobs:
       - name: Download and Install BioDynaMo (Cache Miss)
         if: steps.cache-bdm.outputs.cache-hit != 'true'
         run: |
-          curl https://github.io | bash
+          curl https://biodynamo.github.io/install | bash
 
       - name: Verify Environment and Build Project
         run: |
@@ -35,7 +35,7 @@ jobs:
           echo "$HOME/biodynamo/bin" >> $GITHUB_PATH
           
           # Initialize environment and trigger the build check
-          . $HOME/biodynamo/bin/thisbiodynamo.sh
+          source $HOME/biodynamo-vX.Y.Z/bin/thisbdm.sh
           biodynamo build
 
       # --- BACKUP & WRITE CUSTOM PARAMS ---
@@ -75,7 +75,7 @@ jobs:
       # --- EXECUTE RUNTIME TEST ---
       - name: Execute Simulation Test Run
         run: |
-          . $HOME/biodynamo/bin/thisbiodynamo.sh
+          source $HOME/biodynamo-vX.Y.Z/bin/thisbdm.sh
           biodynamo run
 
       # --- RESTORE ORIGINAL PARAMS ---
