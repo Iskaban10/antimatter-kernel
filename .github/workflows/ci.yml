@@ -1,43 +1,71 @@
 name: CI
 
 on:
-  pull_request:
   push:
-    branches: [main]   # or master
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
-    runs-on: ubuntu-24.04
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # use-recipe / recipe-version / recipe-arch are read by
+          # ci-workflows' bin/repro to map a row onto a cell coord, so
+          # `bin/repro <row> --devshell` resolves without a direct coord.
+          - name: ubu24-gcc
+            os: ubuntu-24.04
+            compiler: gcc
+            use-recipe: biodynamo
+            recipe-version: v1.05-cr-20260812-01
+            recipe-arch: x86_64
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install host dependencies
+      - name: Set up compiler
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake ninja-build ccache \
-            libopenmpi-dev openmpi-bin libomp-dev libgtest-dev
+          if [ "${{ matrix.compiler }}" = "gcc" ]; then
+            echo "CC=gcc" >> $GITHUB_ENV
+            echo "CXX=g++" >> $GITHUB_ENV
+          else
+            echo "CC=clang" >> $GITHUB_ENV
+            echo "CXX=clang++" >> $GITHUB_ENV
+          fi
 
-      - name: Fetch prebuilt BioDynaMo
-        uses: compiler-research/ci-workflows/actions/setup-recipe@<sha-or-tag>
+      # Replaces the previous clone-and-build-BioDynaMo dance plus its pyenv
+      # setup: the recipe ships a prebuilt, relocatable BioDynaMo carrying its
+      # own ROOT, and this action exports the thisbdm.sh environment so
+      # find_package(BioDynaMo) below resolves with no further plumbing.
+      - name: BioDynaMo set-up
+        uses: compiler-research/ci-workflows/actions/setup-biodynamo@main
         with:
-          recipe: biodynamo
-          version: '<recipe-version>'
-          os: ubuntu-24.04
-          arch: x86_64
+          version:       ${{ matrix.recipe-version }}
+          os:            ${{ matrix.os }}
+          arch:          ${{ matrix.recipe-arch }}
+          build-on-miss: false
 
-      - name: Configure
+      - name: Configure project
         run: |
-          BDM_SH=$(find "$GITHUB_WORKSPACE" -path '*bin/thisbdm.sh' | head -n1)
-          echo "Using $BDM_SH"
-          source "$BDM_SH"
-          cmake . -B build -DCMAKE_BUILD_TYPE=Release \
-                -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++
+          cmake . -B build -DCMAKE_BUILD_TYPE=Release
 
-      - name: Build
+      - name: Build project
         run: |
-          source "$(find "$GITHUB_WORKSPACE" -path '*bin/thisbdm.sh' | head -n1)"
-          cmake --build build -j"$(nproc)"
+          cmake --build build -- -j$(nproc)
+
+      - name: Run tests
+        run: |
+          ctest --test-dir build --output-on-failure
+
+      - name: Setup tmate session
+        if: ${{ !cancelled() && runner.debug }}
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 30
