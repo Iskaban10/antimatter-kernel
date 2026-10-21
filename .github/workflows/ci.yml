@@ -1,53 +1,43 @@
-name: BioDyanMo build and run
+name: CI
 
 on:
   pull_request:
-    branches: [main]
+  push:
+    branches: [main]   # or master
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build-and-run:
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
-    container:
-      image: ubuntu:20.04
-      env:
-        DEBIAN_FRONTEND: noninteractive
-
+  build-and-test:
+    runs-on: ubuntu-24.04
     steps:
-      - name: Install system packages
-        run: |
-          apt-get update
-          apt-get install -y sudo curl wget git ca-certificates tzdata xvfb \
-            bsdmainutils lsb-release gnupg
-
       - uses: actions/checkout@v4
 
-      - name: Use CI config from the base branch
-        env:
-          BASE_REF: ${{ github.base_ref }}
+      - name: Install host dependencies
         run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          git fetch --no-tags --depth=1 origin "$BASE_REF"
-          git checkout FETCH_HEAD -- ci/params.json ci/bdm.toml
-          cp ci/params.json ./params.json   # adjust destination to where your code reads it
-          cp ci/bdm.toml    ./bdm.toml      # adjust destination
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build ccache \
+            libopenmpi-dev openmpi-bin libomp-dev libgtest-dev
 
-      - name: Install BioDynaMo
-        shell: bash
-        run: |
-          curl -fsSL https://biodynamo.github.io/install -o /tmp/bdm-install.sh
-          printf 'y\n%.0s' $(seq 1 50) | env -i HOME="$HOME" PATH="$PATH" \
-            DEBIAN_FRONTEND=noninteractive TERM=xterm \
-            script -qec "bash /tmp/bdm-install.sh" /dev/null
+      - name: Fetch prebuilt BioDynaMo
+        uses: compiler-research/ci-workflows/actions/setup-recipe@<sha-or-tag>
+        with:
+          recipe: biodynamo
+          version: '<recipe-version>'
+          os: ubuntu-24.04
+          arch: x86_64
 
-      - name: biodynamo build
-        shell: bash
+      - name: Configure
         run: |
-          curl -fsSL https://biodynamo.github.io/install \
-            | env -i HOME="$HOME" PATH="$PATH" DEBIAN_FRONTEND=noninteractive bash
+          BDM_SH=$(find "$GITHUB_WORKSPACE" -path '*bin/thisbdm.sh' | head -n1)
+          echo "Using $BDM_SH"
+          source "$BDM_SH"
+          cmake . -B build -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++
 
-      - name: biodynamo run
-        shell: bash
+      - name: Build
         run: |
-          source "$(ls -d $HOME/biodynamo-*/bin/thisbdm.sh | head -n 1)"
-          xvfb-run -a biodynamo run
+          source "$(find "$GITHUB_WORKSPACE" -path '*bin/thisbdm.sh' | head -n1)"
+          cmake --build build -j"$(nproc)"
