@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # use-recipe / recipe-version / recipe-arch are read by
+          # ci-workflows' bin/repro to map a row onto a cell coord, so
+          # `bin/repro <row> --devshell` resolves without a direct coord.
+          - name: ubu24-gcc
+            os: ubuntu-24.04
+            compiler: gcc
+            use-recipe: biodynamo
+            recipe-version: v1.05-cr-20260812-01
+            recipe-arch: x86_64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up compiler
+        run: |
+          if [ "${{ matrix.compiler }}" = "gcc" ]; then
+            echo "CC=gcc" >> $GITHUB_ENV
+            echo "CXX=g++" >> $GITHUB_ENV
+          else
+            echo "CC=clang" >> $GITHUB_ENV
+            echo "CXX=clang++" >> $GITHUB_ENV
+          fi
+
+      # Replaces the previous clone-and-build-BioDynaMo dance plus its pyenv
+      # setup: the recipe ships a prebuilt, relocatable BioDynaMo carrying its
+      # own ROOT, and this action exports the thisbdm.sh environment so
+      # find_package(BioDynaMo) below resolves with no further plumbing.
+      - name: BioDynaMo set-up
+        uses: compiler-research/ci-workflows/actions/setup-biodynamo@main
+        with:
+          version:       ${{ matrix.recipe-version }}
+          os:            ${{ matrix.os }}
+          arch:          ${{ matrix.recipe-arch }}
+          build-on-miss: false
+
+      - name: Configure project
+        run: |
+          cmake . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build project
+        run: |
+          cmake --build build -- -j$(nproc)
+
+      - name: Run tests
+        run: |
+          ctest --test-dir build --output-on-failure
+
+      - name: Setup tmate session
+        if: ${{ !cancelled() && runner.debug }}
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 30
