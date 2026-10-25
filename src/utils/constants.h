@@ -15,6 +15,9 @@ namespace bdm
 
         // Proton (and antiproton) rest mass, in kilograms (kg).
         inline constexpr real_t kProtonMass = 1.67262192369e-27;
+        
+        // Neutron (and antineutron) rest mass, in kilograms (kg).
+        inline constexpr real_t kNeutronMass = 1.67492749804e-27;
 
         // Vacuum permittivity, epsilon_0, in Farads per meter (F/m).
         inline constexpr real_t kVacuumPermittivity = 8.8541878128e-12;

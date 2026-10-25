@@ -21,7 +21,7 @@ namespace bdm
     rm->ForEachAgent([&](Agent* agent) 
     {
       auto* particle = FastCast(agent);
-      if (particle != nullptr && !particle->IsAnnihilated()) { particles.push_back(particle); }
+      if (particle != nullptr && !particle->IsAnnihilated())    particles.push_back(particle);
     });
 
     result.num_active_particles = static_cast<int>(particles.size());
@@ -45,15 +45,15 @@ namespace bdm
       {
         const real_t q_i = particles[i]->GetCharge();
         const real_t q_j = particles[j]->GetCharge();
-        if (q_i == 0.0 || q_j == 0.0) { continue; } // neutral species contribute no Coulomb PE
+        if (q_i == 0.0 || q_j == 0.0)   continue; // neutral species contribute no Coulomb PE
 
         const Real3 r_ij = particles[i]->GetPosition() - particles[j]->GetPosition();
         const real_t squared_distance = r_ij * r_ij;
-        if (squared_distance > squared_cutoff) { continue; } // outside the force model's cutoff
-        if (squared_distance < 1e-30) { continue; }  // degenerate coincident pair; skip rather than divide by ~0
+        if (squared_distance > squared_cutoff)    continue; // outside the force model's cutoff
+        if (squared_distance < 1e-30)   continue;  // degenerate coincident pair; skip rather than divide by ~0
 
         const real_t distance = std::sqrt(squared_distance);
-        result.coulomb_potential += constants::kCoulombConstant * q_i * q_j / distance;
+        result.coulomb_potential += constants::kCoulombConstant * q_i * q_j * (1.0 / distance - 1.0 / coulomb_cutoff_radius);
       }
     }
 

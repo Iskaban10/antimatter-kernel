@@ -2,7 +2,6 @@
 #define AGENTS_PARTICLE_SPECIES_H_
 
 #include <cstdint>
-
 #include "utils/constants.h"
 
 namespace bdm 
@@ -14,6 +13,7 @@ namespace bdm
         kAntihydrogen = 2,
         kElectron = 3,
         kProton = 4,
+        kAntihelium = 5,
     };
 
     // Default physical properties (mass in kg, charge in Coulombs) associated with a given species
@@ -38,8 +38,11 @@ namespace bdm
             return {constants::kElectronMass, -constants::kElementaryCharge};
             case ParticleSpecies::kProton:
             return {constants::kProtonMass, +constants::kElementaryCharge};
+            case ParticleSpecies::kAntihelium:
+            return {2 * (constants::kProtonMass + constants::kNeutronMass), 0.0};
+            default:
+            return {0.0, 0.0};
         }
-        return {0.0, 0.0};  // unreachable safety fallback
     }
 }
 

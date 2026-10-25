@@ -1,0 +1,43 @@
+name: clang-format
+
+on:
+  pull_request:
+    paths:
+      - '**/*.h'
+      - '**/*.hpp'
+      - '**/*.cpp'
+      - '**/*.cc'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  precheckin:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format-18
+          clang-format-18 --version
+
+      - name: Run git-clang-format
+        run: |
+          PR_BASE=$(git rev-list ${{ github.event.pull_request.head.sha }} ^${{ github.event.pull_request.base.sha }} | tail --lines 1 | xargs -I {} git rev-parse {}~1)
+          echo "Running git clang-format against $PR_BASE commit"
+          if ! git -c color.ui='always' -c diff.wsErrorHighlight='all' -c color.diff.whitespace='red reverse' \
+                   clang-format-18 --diff --binary clang-format-18 $PR_BASE; then
+            echo "::error::Code is not properly formatted. Please run 'git clang-format-18 HEAD~' locally. \n
+                for multiple commits we should place the formatting changes in the related commit with:\n
+                \t\tgit rebase -i -x 'git-clang-format-18 master && git commit -a --allow-empty --fixup=HEAD' --strategy-option=theirs origin/master\n
+                \t\t Then inspect the results with: git log --oneline\n
+                \t\t Then squash without poluting the history with: git rebase --autosquash -i master\n"
+             exit 1
+          fi

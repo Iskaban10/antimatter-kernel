@@ -14,7 +14,7 @@ namespace bdm
     real_t kinetic = 0.0;
     real_t trap_potential = 0.0;
     real_t coulomb_potential = 0.0;
-    int num_active_particles = 0; // no. of non-annihilated particles
+    int num_active_particles = 0; // number of non-annihilated particles
     real_t Total() const { return kinetic + trap_potential + coulomb_potential; }
   };
 

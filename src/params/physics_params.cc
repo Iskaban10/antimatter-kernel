@@ -30,8 +30,9 @@ namespace bdm
         case ParticleSpecies::kAntihydrogen: return "antihydrogen";
         case ParticleSpecies::kElectron: return "electron";
         case ParticleSpecies::kProton: return "proton";
+        case ParticleSpecies::kAntihelium: return "antihelium";
+        default: return "unknown";
       }
-      return "unknown";
     }
   }
 

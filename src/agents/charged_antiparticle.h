@@ -10,7 +10,7 @@
 
 namespace bdm 
 {
-  // A single charged antiparticle (or any charged particle listed in ParticleSpecies) tracked as a BioDynaMo Agent.
+  // A single charged antiparticle tracked as a BioDynaMo Agent.
   class ChargedAntiparticle : public Agent 
   {
     BDM_AGENT_HEADER(ChargedAntiparticle, Agent, 4);
@@ -19,8 +19,6 @@ namespace bdm
     ChargedAntiparticle() = default;
 
     // Constructs a particle of the given species at `position`, with velocity, mass, and charge initialized to the species' defaults.
-    // Diameter is set to a small default for  point-charge neighbor search; can be overriden via SetDiameter if a
-    // different value is needed.
     explicit ChargedAntiparticle(const Real3& position, ParticleSpecies species = ParticleSpecies::kAntiproton);
 
     ~ChargedAntiparticle() override = default;

@@ -580,8 +580,7 @@ void FastMultipoleSolver::Compute(const std::vector<Source>& sources, std::vecto
           for (size_t j = S.begin; j < S.end; ++j) 
           {
             if (j == i || sq[j] == 0.0)     continue;
-            const double rx = sx[i] - sx[j], ry = sy[i] - sy[j],
-                         rz = sz[i] - sz[j];
+            const double rx = sx[i] - sx[j], ry = sy[i] - sy[j], rz = sz[i] - sz[j];
             const double r2 = rx * rx + ry * ry + rz * rz;
             if (r2 < min_sq)    continue;
             const double f = sq[j] / (r2 * std::sqrt(r2));

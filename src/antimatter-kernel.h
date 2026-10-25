@@ -109,7 +109,7 @@ namespace bdm
     }
 
     EnergyBreakdown initial_energy = ComputeTotalEnergy(rm, field, energy_cutoff_radius);
-    std::cout << "step 0  KE=" << initial_energy.kinetic
+    std::cout << "\nstep 0  KE=" << initial_energy.kinetic
               << " PE_trap=" << initial_energy.trap_potential
               << " PE_coulomb=" << initial_energy.coulomb_potential
               << " TOTAL=" << initial_energy.Total() << " J" << std::endl;
