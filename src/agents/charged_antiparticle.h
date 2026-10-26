@@ -2,7 +2,7 @@
 #define AGENTS_CHARGED_ANTIPARTICLE_H_
 
 #include <cstring>
-
+#include <cmath>
 #include "agents/particle_species.h"
 #include "core/agent/agent.h"
 #include "core/container/math_array.h"
@@ -18,8 +18,8 @@ namespace bdm
   public:
     ChargedAntiparticle() = default;
 
-    // Constructs a particle of the given species at `position`, with velocity, mass, and charge initialized to the species' defaults.
-    explicit ChargedAntiparticle(const Real3& position, ParticleSpecies species = ParticleSpecies::kAntiproton);
+    // Constructs a particle of the given species at `position` with velocity and mass and charge initialized to the species' defaults.
+    explicit ChargedAntiparticle(const Real3& position, ParticleSpecies species = ParticleSpecies::kAntiproton, const Real3& velocity = {0.0, 0.0, 0.0});
 
     ~ChargedAntiparticle() override = default;
 

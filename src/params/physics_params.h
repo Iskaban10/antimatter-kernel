@@ -32,15 +32,15 @@ namespace bdm
     // Ring electrode radius, meters.
     real_t rho0 = 0.01;
 
-    // --- Time integration ----------------------------------------------------
     // Timestep for the Lorentz push, seconds, should be small relative to the cyclotron period (2*pi*m / (|q| B0))
     real_t dt = 1e-12;
-    int num_steps = 100000; // Number of simulation steps to run.
+    int num_steps = 1000; // Number of simulation steps to run.
 
     // --- Initial particle cloud ------------------------------------------------
     int num_particles = 10;
-    std::map<ParticleSpecies, int> populations = {{ParticleSpecies::kPositron, 10}};
+    std::map<ParticleSpecies, size_t> populations = {{ParticleSpecies::kPositron, 10}};
     real_t initial_cloud_radius = 1e-4;
+    real_t initial_temperature = 0; // initial temperature of environment
 
     void LoadParams(const std::string& filename = "params.json"); // loads params.json
     void PrintParams() const; // print params that have been loaded

@@ -1,6 +1,9 @@
 #ifndef FIELDS_PENNING_TRAP_H_
 #define FIELDS_PENNING_TRAP_H_
 
+#include <vector>
+#include <map>
+#include "agents/particle_species.h"
 #include "core/container/math_array.h"
 
 namespace bdm 
@@ -50,6 +53,8 @@ namespace bdm
 
       real_t GetCharacteristicDimension() const { return d_; }
       void SetCharacteristicDimension(real_t d) { d_ = d; }
+
+      static std::vector<Real3> SetParticleVelocities(const std::map<ParticleSpecies, size_t>& populations, real_t initial_temp);
 
     private:
       // Axial magnetic field strength, Tesla.

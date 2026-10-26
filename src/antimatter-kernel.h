@@ -17,7 +17,6 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
-#include <limits>
 #include <random>
 #include <chrono>
 
@@ -69,20 +68,21 @@ namespace bdm
     const CoulombMethod coulomb_method = interaction->GetCoulombMethod();
     const bool use_barnes_hut = interaction->coulomb_enabled && coulomb_method == CoulombMethod::kBarnesHut;
     const bool use_fast_multipole = interaction->coulomb_enabled && coulomb_method == CoulombMethod::kFastMultipole;
-
     const real_t energy_cutoff_radius = !interaction->coulomb_enabled ? static_cast<real_t>(0.0) : (coulomb_method == CoulombMethod::kStandard ? interaction->cutoff_radius : std::numeric_limits<real_t>::infinity());
-
-    PenningTrapField field = PenningTrapField::MakeFromGeometry( physics->b0, physics->trap_voltage, physics->z0, physics->rho0);
 
     std::default_random_engine rng(physics->seed);
     std::uniform_real_distribution<real_t> offset(-physics->initial_cloud_radius, physics->initial_cloud_radius);
 
+    PenningTrapField field = PenningTrapField::MakeFromGeometry( physics->b0, physics->trap_voltage, physics->z0, physics->rho0);
+    const std::vector<Real3> particle_velocities = PenningTrapField::SetParticleVelocities( physics->populations, physics->initial_temperature);
+
+    int particle_counter = 0; // counter to keep track on particles
     for (const auto& [species, count] : physics->populations) 
     {
       for (int i = 0; i < count; i++) 
       {
         Real3 position{offset(rng), offset(rng), offset(rng)};
-        auto* particle = new ChargedAntiparticle(position, species);
+        auto* particle = new ChargedAntiparticle(position, species, particle_velocities[particle_counter++]);
 
         if (interaction->coulomb_enabled && coulomb_method == CoulombMethod::kStandard)
           particle->AddBehavior(new CoulombInteraction());
@@ -97,7 +97,7 @@ namespace bdm
 
     const int energy_log_interval = physics->num_steps >= 100 ? physics->num_steps / 100 : 1; // aprrox 1 % of number of steps
 
-    const std::string energy_csv_path = simulation.GetOutputDir() + "/energy_analysis.csv";
+    const std::string energy_csv_path = simulation.GetOutputDir() + "/energy_analysis_data.csv";
     std::ofstream energy_csv(energy_csv_path);
     if (!energy_csv.is_open()) 
     {
@@ -124,8 +124,10 @@ namespace bdm
 
     for (int step = 1; step <= physics->num_steps; ++step) 
     {
-      if (use_barnes_hut)   ComputeBarnesHutCoulombForces(rm, interaction->barnes_hut_theta);
-      else if (use_fast_multipole)  ComputeFastMultipoleCoulombForces(rm, interaction->fast_multipole_order, interaction->fast_multipole_theta);
+      if (use_barnes_hut)   
+        ComputeBarnesHutCoulombForces(rm, interaction->barnes_hut_theta);
+      else if (use_fast_multipole)  
+        ComputeFastMultipoleCoulombForces(rm, interaction->fast_multipole_order, interaction->fast_multipole_theta);
 
       simulation.GetScheduler()->Simulate(1);
 

@@ -2,9 +2,10 @@
 
 namespace bdm 
 {
-    ChargedAntiparticle::ChargedAntiparticle(const Real3& position, ParticleSpecies species): species_(species) 
+    ChargedAntiparticle::ChargedAntiparticle(const Real3& position, ParticleSpecies species, const Real3& velocity): species_(species)
     {
         SetPosition(position);
+        SetVelocity(velocity);
         SetDiameter(constants::kDefaultParticleDiameter);
 
         const SpeciesProperties props = GetDefaultSpeciesProperties(species_);

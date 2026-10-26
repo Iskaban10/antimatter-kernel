@@ -53,13 +53,14 @@ namespace bdm
     z0 = j.value("z0", z0);
     rho0 = j.value("rho0", rho0);
     dt = j.value("dt", dt);
+    initial_temperature = j.value("initial_temperature", initial_temperature);
 
     if (j.contains("particle_populations")) 
     {
       populations.clear();
       for (const auto& [name, count] : j.at("particle_populations").items()) 
       {
-        populations[ParseSpecies(name)] = count.get<int>();
+        populations[ParseSpecies(name)] = count.get<size_t>();
       }
     }
 
@@ -94,6 +95,8 @@ namespace bdm
     if (dt <= 0.0) throw std::invalid_argument("PhysicsParams: dt must be > 0");
     if (num_steps <= 0)
       throw std::invalid_argument("PhysicsParams: num_steps must be > 0");
+    if (initial_temperature <= 0)
+      throw std::invalid_argument("PhysicsParams: Initial temperature in Kelvin must be > 0");
     if (populations.empty())
       throw std::invalid_argument("PhysicsParams: populations must not be empty");
     for (const auto& [species, count] : populations) 

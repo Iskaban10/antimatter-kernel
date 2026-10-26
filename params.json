@@ -8,6 +8,7 @@
   "num_steps": 500,
   "particle_populations": { "positron": 100, "electron": 100 },
   "initial_cloud_radius": 1e-4,
+  "initial_temperature": 5,
 
   "coulomb_enabled": true,
   "coulomb_method": "fast-multipole",
