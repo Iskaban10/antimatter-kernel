@@ -34,7 +34,7 @@ namespace bdm
 
     // Timestep for the Lorentz push, seconds, should be small relative to the cyclotron period (2*pi*m / (|q| B0))
     real_t dt = 1e-12;
-    int num_steps = 1000; // Number of simulation steps to run.
+    size_t num_steps = 1000; // Number of simulation steps to run.
 
     // --- Initial particle cloud ------------------------------------------------
     int num_particles = 10;

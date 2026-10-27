@@ -16,7 +16,6 @@ namespace bdm
         constexpr int kMaxDepth = 32;   // deepest allowed subdivision
         constexpr real_t kMinSquaredDistance = 1e-30;
 
-        // adds Coulomb force on a charge `target_q` at `target_pos` due to point charge `source_q` at `source_pos`.
         inline void AddPointCharge(const Real3& target_pos, real_t target_q, const Real3& source_pos, real_t source_q, Real3* force) 
         {
             const Real3 r = target_pos - source_pos;
@@ -173,6 +172,14 @@ namespace bdm
         return force;
     }
 
+    real_t BarnesHutTree::ComputePotential(const Real3& position, size_t self_index) const 
+    {
+        real_t phi = 0.0;
+        if (nodes_.empty()) return phi;
+        AccumulatePotential(0, position, self_index, &phi);
+        return phi;
+    }
+
     void BarnesHutTree::Accumulate(int node_index, const Real3& position, real_t charge, size_t self_index, Real3* force) const 
     {
         const Node& node = nodes_[node_index];
@@ -198,11 +205,11 @@ namespace bdm
         {
             if (node.positive_charge > 0.0) 
             {
-            AddPointCharge(position, charge, node.positive_center, node.positive_charge, force);
+                AddPointCharge(position, charge, node.positive_center, node.positive_charge, force);
             }
             if (node.negative_charge > 0.0) 
             {
-            AddPointCharge(position, charge, node.negative_center, -node.negative_charge, force);
+                AddPointCharge(position, charge, node.negative_center, -node.negative_charge, force);
             }
             return;
         }
@@ -210,6 +217,54 @@ namespace bdm
         for (int o = 0; o < 8; ++o) 
         {
             if (node.children[o] >= 0) { Accumulate(node.children[o], position, charge, self_index, force); }
+        }
+    }
+
+    void BarnesHutTree::AccumulatePotential(int node_index, const Real3& position, size_t self_index, real_t* phi) const 
+    {
+        const Node& node = nodes_[node_index];
+        if (node.positive_charge == 0.0 && node.negative_charge == 0.0) return;
+
+        if (node.is_leaf) 
+        {
+            for (size_t k = node.begin; k < node.end; ++k) 
+            {
+                const size_t j = order_[k];
+                if (j == self_index) continue;
+                const Source& s = sources_[j];
+                if (s.charge == 0.0) continue;
+                const Real3 r = position - s.position;
+                const real_t d2 = r * r;
+                if (d2 < kMinSquaredDistance) continue;
+                *phi += s.charge / std::sqrt(d2);
+            }
+            return;
+        }
+
+        const Real3 delta = position - node.center;
+        const real_t squared_distance = delta * delta;
+        const real_t width = 2.0 * node.half_size;
+        if (width * width < squared_theta_ * squared_distance) 
+        {
+            if (node.positive_charge > 0.0) 
+            {
+                const Real3 r = position - node.positive_center;
+                const real_t d2 = r * r;
+                if (d2 >= kMinSquaredDistance) *phi += node.positive_charge / std::sqrt(d2);
+            }
+            if (node.negative_charge > 0.0) 
+            {
+                const Real3 r = position - node.negative_center;
+                const real_t d2 = r * r;
+                if (d2 >= kMinSquaredDistance) *phi -= node.negative_charge / std::sqrt(d2);
+            }
+            return;
+        }
+
+        for (int o = 0; o < 8; ++o) 
+        {
+            if (node.children[o] >= 0) 
+                AccumulatePotential(node.children[o], position, self_index, phi);
         }
     }
 

@@ -70,7 +70,7 @@ namespace bdm
 
   void PhysicsParams::PrintParams() const 
   {
-    std::cout << "\n[physics] \nseed=" << seed
+    std::cout << "[physics] \nseed=" << seed
               << "\ninitial_cloud_radius=" << initial_cloud_radius << " m"
               << "\nb0=" << b0 << " T"
               << "\ntrap_voltage=" << trap_voltage << " V"
@@ -79,10 +79,10 @@ namespace bdm
               << "\ndt=" << dt << " s"
               << "\nnum_steps=" << num_steps << std::endl;
 
-    std::cout << "Particle populations: \t";
+    std::cout << "\nPARTICLE POPULATIONS:";
     for (const auto& [species, count] : populations) 
     {
-      std::cout << "population: " << SpeciesToString(species) << " x \t" << count;
+      std::cout << '\n' << SpeciesToString(species) << " x " << count;
     }
     std::cout<<'\n';
   }
@@ -95,8 +95,8 @@ namespace bdm
     if (dt <= 0.0) throw std::invalid_argument("PhysicsParams: dt must be > 0");
     if (num_steps <= 0)
       throw std::invalid_argument("PhysicsParams: num_steps must be > 0");
-    if (initial_temperature <= 0)
-      throw std::invalid_argument("PhysicsParams: Initial temperature in Kelvin must be > 0");
+    if (initial_temperature < 0)
+      throw std::invalid_argument("PhysicsParams: Initial temperature in Kelvin must be >= 0");
     if (populations.empty())
       throw std::invalid_argument("PhysicsParams: populations must not be empty");
     for (const auto& [species, count] : populations) 

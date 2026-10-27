@@ -4,7 +4,9 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <memory>
 #include <mutex>
+#include <utility>
 
 #include "agents/charged_antiparticle.h"
 #include "core/resource_manager.h"
@@ -36,13 +38,16 @@ namespace bdm {
 // Derivatives of 1/r come from a recurrence derived from r^2 d_i f = -x_i f.
 // ---------------------------------------------------------------------------
 
-struct FmmTables {
-  struct Triple {
+struct FmmTables 
+{
+  struct Triple 
+  {
     int a;
     int b;
     int c;
   };
-  struct Recipe {
+  struct Recipe 
+  {
     int axis = 0;
     int delta[3] = {0, 0, 0};
     int minus1[3] = {-1, -1, -1};  // index of delta - e_j, or -1
@@ -50,30 +55,36 @@ struct FmmTables {
   };
 
   int order = 0;
-  int n_m = 0;  // multi-indices with degree <= P
-  int n_d = 0;  // multi-indices with degree <= 2P
+  int n_m = 0;   // multi-indices with degree <= P
+  int n_d = 0;   // multi-indices with degree <= 2P
   int size = 0;  // 2P + 1
   std::vector<std::array<int, 3>> multi;  // sorted by total degree
   std::vector<int> lookup;
   std::vector<double> fact, inv_fact, sign;
   std::vector<Recipe> recipes;
-  std::vector<int> m2l_index;                  // [gamma * n_m + alpha]
+  std::vector<int> m2l_index;  // [gamma * n_m + alpha]
   std::vector<Triple> m2m_pairs, l2l_pairs;
   std::vector<std::array<int, 3>> grad_index;  // index of gamma - e_k, or -1
 
-  int Index(int a, int b, int c) const {
-    if (a < 0 || b < 0 || c < 0 || a >= size || b >= size || c >= size) {
+  int Index(int a, int b, int c) const 
+  {
+    if (a < 0 || b < 0 || c < 0 || a >= size || b >= size || c >= size) 
+    {
       return -1;
     }
     return lookup[(a * size + b) * size + c];
   }
 
-  explicit FmmTables(int p) : order(p), size(2 * p + 1) {
+  explicit FmmTables(int p) : order(p), size(2 * p + 1) 
+  {
     const int max_degree = 2 * p;
     lookup.assign(static_cast<size_t>(size) * size * size, -1);
-    for (int degree = 0; degree <= max_degree; ++degree) {
-      for (int a = degree; a >= 0; --a) {
-        for (int b = degree - a; b >= 0; --b) {
+    for (int degree = 0; degree <= max_degree; ++degree) 
+    {
+      for (int a = degree; a >= 0; --a) 
+      {
+        for (int b = degree - a; b >= 0; --b) 
+        {
           const int c = degree - a - b;
           lookup[(a * size + b) * size + c] = static_cast<int>(multi.size());
           multi.push_back({a, b, c});
@@ -84,13 +95,15 @@ struct FmmTables {
     n_m = (p + 1) * (p + 2) * (p + 3) / 6;
 
     std::vector<double> factorial(max_degree + 1, 1.0);
-    for (int i = 1; i <= max_degree; ++i) {
+    for (int i = 1; i <= max_degree; ++i) 
+    {
       factorial[i] = factorial[i - 1] * i;
     }
     fact.resize(n_d);
     inv_fact.resize(n_d);
     sign.resize(n_d);
-    for (int k = 0; k < n_d; ++k) {
+    for (int k = 0; k < n_d; ++k) 
+    {
       const auto& m = multi[k];
       fact[k] = factorial[m[0]] * factorial[m[1]] * factorial[m[2]];
       inv_fact[k] = 1.0 / fact[k];
@@ -103,14 +116,17 @@ struct FmmTables {
       const auto& m = multi[k];
       Recipe& r = recipes[k];
       r.axis = m[0] > 0 ? 0 : (m[1] > 0 ? 1 : 2);
-      for (int j = 0; j < 3; ++j) {
+      for (int j = 0; j < 3; ++j) 
+      {
         r.delta[j] = m[j];
         std::array<int, 3> t = m;
-        if (m[j] >= 1) {
+        if (m[j] >= 1) 
+        {
           t[j] -= 1;
           r.minus1[j] = Index(t[0], t[1], t[2]);
         }
-        if (m[j] >= 2) {
+        if (m[j] >= 2) 
+        {
           t[j] -= 1;
           r.minus2[j] = Index(t[0], t[1], t[2]);
         }
@@ -163,12 +179,10 @@ struct FmmTables {
 
 namespace 
 {
-
 constexpr int kMaxDepth = 32;
 constexpr int kMinOrder = 1;
 constexpr int kMaxOrder = 8;
-// Pairs closer than this (m^2, physical units) are skipped.
-constexpr double kMinSquaredDistance = 1e-30;
+constexpr double kMinSquaredDistance = 1e-30; // Pairs closer than this (m^2, physical units) are skipped.
 
 using Tables = FmmTables;
 
@@ -240,7 +254,8 @@ struct Workspace
   std::vector<Cell> cells;
   size_t leaf_capacity = 32;
 
-  int BuildCell(size_t begin, size_t end, double cx, double cy, double cz, double half, int depth) {
+  int BuildCell(size_t begin, size_t end, double cx, double cy, double cz, double half, int depth) 
+  {
     const int index = static_cast<int>(cells.size());
     cells.emplace_back();
     cells[index].cx = cx;
@@ -265,7 +280,8 @@ struct Workspace
     }
     std::array<size_t, 9> offsets{};
     offsets[0] = begin;
-    for (int o = 0; o < 8; ++o) {
+    for (int o = 0; o < 8; ++o) 
+    {
       offsets[o + 1] = offsets[o] + counts[o];
     }
     std::array<size_t, 8> cursor{};
@@ -278,18 +294,16 @@ struct Workspace
       const size_t p = order[k];
       scratch[cursor[Octant(x[p], y[p], z[p], cx, cy, cz)]++] = p;
     }
-    std::copy(scratch.begin() + begin, scratch.begin() + end,
-              order.begin() + begin);
+    std::copy(scratch.begin() + begin, scratch.begin() + end, order.begin() + begin);
 
     const double ch = 0.5 * half;
     for (int o = 0; o < 8; ++o) 
     {
-      if (counts[o] == 0)   continue;
-      
-      const int child = BuildCell(
-          offsets[o], offsets[o + 1], cx + ((o & 1) ? ch : -ch),
-          cy + ((o & 2) ? ch : -ch), cz + ((o & 4) ? ch : -ch), ch,
-          depth + 1);
+      if (counts[o] == 0) continue;
+      const int child = BuildCell(offsets[o], offsets[o + 1],
+                                  cx + ((o & 1) ? ch : -ch),
+                                  cy + ((o & 2) ? ch : -ch),
+                                  cz + ((o & 4) ? ch : -ch), ch, depth + 1);
       cells[index].children[o] = child;
     }
     return index;
@@ -301,24 +315,44 @@ std::shared_ptr<const FmmTables> GetTables(int order)
   static std::mutex mutex;
   static std::shared_ptr<const FmmTables> cache[kMaxOrder + 1];
   std::lock_guard<std::mutex> lock(mutex);
-  if (!cache[order])    cache[order] = std::make_shared<const FmmTables>(order);
+  if (!cache[order]) cache[order] = std::make_shared<const FmmTables>(order);
   return cache[order];
 }
 
 }  // namespace
 
 FastMultipoleSolver::FastMultipoleSolver(int order, real_t theta, size_t leaf_capacity)
-                        : order_(std::min(std::max(order, kMinOrder), kMaxOrder)), theta_(theta),
-                        leaf_capacity_(leaf_capacity < 1 ? 1 : leaf_capacity), tables_(GetTables(order_)) {}
+                                      : order_(std::min(std::max(order, kMinOrder), kMaxOrder)),
+                                        theta_(theta),
+                                        leaf_capacity_(leaf_capacity < 1 ? 1 : leaf_capacity),
+                                        tables_(GetTables(order_)) {}
 
-void FastMultipoleSolver::Compute(const std::vector<Source>& sources, std::vector<Real3>* forces) const 
+void FastMultipoleSolver::ComputeForces(const std::vector<Source>& sources, std::vector<Real3>* forces) const 
+{
+  Compute(sources, forces, nullptr);
+}
+
+double FastMultipoleSolver::ComputePotentialEnergy(const std::vector<Source>& sources) const 
+{
+  double u = 0.0;
+  Compute(sources, nullptr, &u);
+  return u;
+}
+
+void FastMultipoleSolver::Compute(const std::vector<Source>& sources, std::vector<Real3>* forces, double* potential_energy) const 
 {
   const size_t n = sources.size();
-  forces->assign(n, Real3{0.0, 0.0, 0.0});
-  if (n == 0)   return;
+  if (forces != nullptr) forces->assign(n, Real3{0.0, 0.0, 0.0});
+  if (potential_energy != nullptr) *potential_energy = 0.0;
+  if (n == 0) return;
+  const bool want_forces = (forces != nullptr);
+  const bool want_energy = (potential_energy != nullptr);
+  if (!want_forces && !want_energy) return;
+
   const FmmTables& t = *tables_;
   const int n_m = t.n_m;
 
+  // --- Rescale to a unit cube centered at the origin -------------------------
   double low[3], high[3];
   for (int d = 0; d < 3; ++d) 
   {
@@ -336,8 +370,9 @@ void FastMultipoleSolver::Compute(const std::vector<Source>& sources, std::vecto
   const double extent = std::max({high[0] - low[0], high[1] - low[1], high[2] - low[2]});
   const double length = std::max(extent, 1e-15);  // physical cube edge
   const double mid[3] = {0.5 * (low[0] + high[0]), 0.5 * (low[1] + high[1]), 0.5 * (low[2] + high[2])};
-  
-  const double force_scale = constants::kCoulombConstant / (length * length);
+
+  const double k_coulomb = static_cast<double>(constants::kCoulombConstant);
+  const double force_scale = k_coulomb / (length * length);
   const double min_sq = kMinSquaredDistance / (length * length);
 
   Workspace ws;
@@ -346,7 +381,8 @@ void FastMultipoleSolver::Compute(const std::vector<Source>& sources, std::vecto
   ws.y.resize(n);
   ws.z.resize(n);
   ws.q.resize(n);
-  for (size_t i = 0; i < n; ++i) {
+  for (size_t i = 0; i < n; ++i) 
+  {
     ws.x[i] = (static_cast<double>(sources[i].position[0]) - mid[0]) / length;
     ws.y[i] = (static_cast<double>(sources[i].position[1]) - mid[1]) / length;
     ws.z[i] = (static_cast<double>(sources[i].position[2]) - mid[2]) / length;
@@ -356,9 +392,7 @@ void FastMultipoleSolver::Compute(const std::vector<Source>& sources, std::vecto
   // --- Tree ----------------------------------------------------------------
   ws.order.resize(n);
   ws.scratch.resize(n);
-  for (size_t i = 0; i < n; ++i) {
-    ws.order[i] = i;
-  }
+  for (size_t i = 0; i < n; ++i)  { ws.order[i] = i; }
   ws.cells.reserve(2 * n / std::max<size_t>(leaf_capacity_, 1) + 16);
   ws.BuildCell(0, n, 0.0, 0.0, 0.0, 0.5 * (1.0 + 1e-9), 0);
   std::vector<Cell>& cells = ws.cells;
@@ -379,12 +413,12 @@ void FastMultipoleSolver::Compute(const std::vector<Source>& sources, std::vecto
   for (int c = n_cells - 1; c >= 0; --c) 
   {
     Cell& cell = cells[c];
-    double r2 = 0.0;
     if (cell.is_leaf) 
     {
+      double r2 = 0.0;
       for (size_t k = cell.begin; k < cell.end; ++k) 
       {
-        const double dx = sx[k] - cell.cx, dy = sy[k] - cell.cy, dz = sz[k] - cell.cz;
+        const double dx = sx[k] - cell.cx, dy = sy[k] - cell.cy,  dz = sz[k] - cell.cz;
         r2 = std::max(r2, dx * dx + dy * dy + dz * dz);
       }
       cell.radius = std::sqrt(r2);
@@ -413,14 +447,10 @@ void FastMultipoleSolver::Compute(const std::vector<Source>& sources, std::vecto
 #pragma omp for schedule(dynamic, 16)
     for (int c = 0; c < n_cells; ++c) {
       const Cell& cell = cells[c];
-      if (!cell.is_leaf) {
-        continue;
-      }
+      if (!cell.is_leaf) continue;
       double* m = &M[static_cast<size_t>(c) * n_m];
       for (size_t k = cell.begin; k < cell.end; ++k) {
-        if (sq[k] == 0.0) {
-          continue;
-        }
+        if (sq[k] == 0.0) continue;
         Monomials(t, sx[k] - cell.cx, sy[k] - cell.cy, sz[k] - cell.cz,
                   mono.data());
         for (int a = 0; a < n_m; ++a) {
@@ -433,20 +463,18 @@ void FastMultipoleSolver::Compute(const std::vector<Source>& sources, std::vecto
   // --- M2M (children have larger indices than their parent) -----------------
   {
     std::vector<double> mono(n_m);
-    for (int c = n_cells - 1; c >= 0; --c) 
-    {
+    for (int c = n_cells - 1; c >= 0; --c) {
       const Cell& cell = cells[c];
-      if (cell.is_leaf)  continue;
+      if (cell.is_leaf) continue;
       double* mp = &M[static_cast<size_t>(c) * n_m];
-      for (int o = 0; o < 8; ++o) 
-      {
+      for (int o = 0; o < 8; ++o) {
         const int child = cell.children[o];
-        if (child < 0)  continue;
+        if (child < 0) continue;
         const Cell& ch = cells[child];
-        Monomials(t, ch.cx - cell.cx, ch.cy - cell.cy, ch.cz - cell.cz, mono.data());
+        Monomials(t, ch.cx - cell.cx, ch.cy - cell.cy, ch.cz - cell.cz,
+                  mono.data());
         const double* mc = &M[static_cast<size_t>(child) * n_m];
-        for (const auto& pr : t.m2m_pairs) 
-        {
+        for (const auto& pr : t.m2m_pairs) {
           mp[pr.a] += mc[pr.b] * mono[pr.c] * t.inv_fact[pr.c];
         }
       }
@@ -460,7 +488,8 @@ void FastMultipoleSolver::Compute(const std::vector<Source>& sources, std::vecto
   {
     std::vector<std::pair<int, int>> stack;
     stack.emplace_back(0, 0);
-    while (!stack.empty()) {
+    while (!stack.empty()) 
+    {
       const auto [ti, si] = stack.back();
       stack.pop_back();
       const Cell& T = cells[ti];
@@ -483,27 +512,27 @@ void FastMultipoleSolver::Compute(const std::vector<Source>& sources, std::vecto
       {
         for (int o = 0; o < 8; ++o) 
         {
-          if (T.children[o] >= 0)   stack.emplace_back(T.children[o], si);
+          if (T.children[o] >= 0) stack.emplace_back(T.children[o], si);
         }
       } 
       else 
       {
         for (int o = 0; o < 8; ++o) 
         {
-          if (S.children[o] >= 0)   stack.emplace_back(ti, S.children[o]);
+          if (S.children[o] >= 0) stack.emplace_back(ti, S.children[o]);
         }
       }
     }
   }
 
-  // --- M2L (parallel over target cells) -----------------------------------
+  // --- M2L (parallel over target cells) -------------------------------------
 #pragma omp parallel
   {
     std::vector<double> D(t.n_d);
 #pragma omp for schedule(dynamic, 8)
     for (int ti = 0; ti < n_cells; ++ti) 
     {
-      if (m2l_list[ti].empty())    continue;
+      if (m2l_list[ti].empty()) continue;
       double* l = &L[static_cast<size_t>(ti) * n_m];
       for (const int si : m2l_list[ti]) 
       {
@@ -531,18 +560,18 @@ void FastMultipoleSolver::Compute(const std::vector<Source>& sources, std::vecto
     for (int c = 0; c < n_cells; ++c) 
     {
       const Cell& cell = cells[c];
-      if (cell.is_leaf)     continue;
+      if (cell.is_leaf) continue;
       const double* lp = &L[static_cast<size_t>(c) * n_m];
       for (int o = 0; o < 8; ++o) 
       {
         const int child = cell.children[o];
-        if (child < 0)  continue;
+        if (child < 0) continue;
         const Cell& ch = cells[child];
         Monomials(t, ch.cx - cell.cx, ch.cy - cell.cy, ch.cz - cell.cz, mono.data());
         double* lc = &L[static_cast<size_t>(child) * n_m];
-        for (const auto& pr : t.l2l_pairs) {
-          lc[pr.a] += lp[pr.b] * t.fact[pr.b] * t.inv_fact[pr.a] *
-                      t.inv_fact[pr.c] * mono[pr.c];
+        for (const auto& pr : t.l2l_pairs) 
+        {
+          lc[pr.a] += lp[pr.b] * t.fact[pr.b] * t.inv_fact[pr.a] * t.inv_fact[pr.c] * mono[pr.c];
         }
       }
     }
@@ -550,7 +579,16 @@ void FastMultipoleSolver::Compute(const std::vector<Source>& sources, std::vecto
 
   // --- L2P + P2P (parallel over leaves) -------------------------------------
   // Field per unit target charge, rescaled units: E_i = sum_j q_j (x_i - x_j)/r^3
-  std::vector<double> ex(n, 0.0), ey(n, 0.0), ez(n, 0.0);
+  // Potential per unit target charge, rescaled units: phi_i = sum_j q_j / r
+  std::vector<double> ex, ey, ez, phi;
+  if (want_forces) {
+    ex.assign(n, 0.0);
+    ey.assign(n, 0.0);
+    ez.assign(n, 0.0);
+  }
+  if (want_energy) {
+    phi.assign(n, 0.0);
+  }
 #pragma omp parallel
   {
     std::vector<double> mono(n_m);
@@ -558,50 +596,88 @@ void FastMultipoleSolver::Compute(const std::vector<Source>& sources, std::vecto
     for (int ti = 0; ti < n_cells; ++ti) 
     {
       const Cell& T = cells[ti];
-      if (!T.is_leaf)     continue;
+      if (!T.is_leaf) continue;
       const double* l = &L[static_cast<size_t>(ti) * n_m];
       for (size_t i = T.begin; i < T.end; ++i) 
       {
         Monomials(t, sx[i] - T.cx, sy[i] - T.cy, sz[i] - T.cz, mono.data());
-        double gx = 0.0, gy = 0.0, gz = 0.0;
-        for (int g = 1; g < n_m; ++g) 
-        {
-          const auto& gi = t.grad_index[g];
-          if (gi[0] >= 0) gx += t.multi[g][0] * l[g] * mono[gi[0]];
-          if (gi[1] >= 0) gy += t.multi[g][1] * l[g] * mono[gi[1]];
-          if (gi[2] >= 0) gz += t.multi[g][2] * l[g] * mono[gi[2]];
-        }
-        double fx = -gx, fy = -gy, fz = -gz;
 
-        // P2P
+        double pot = 0.0, fx = 0.0, fy = 0.0, fz = 0.0;
+
+        // L2P: far-field contribution from the local expansion
+        if (want_energy) 
+        {
+          for (int g = 0; g < n_m; ++g) pot += l[g] * mono[g];
+        }
+        if (want_forces) 
+        {
+          double gx = 0.0, gy = 0.0, gz = 0.0;  // gradient of the potential
+          for (int g = 1; g < n_m; ++g) 
+          {
+            const auto& gi = t.grad_index[g];
+            if (gi[0] >= 0) gx += t.multi[g][0] * l[g] * mono[gi[0]];
+            if (gi[1] >= 0) gy += t.multi[g][1] * l[g] * mono[gi[1]];
+            if (gi[2] >= 0) gz += t.multi[g][2] * l[g] * mono[gi[2]];
+          }
+          fx = -gx;
+          fy = -gy;
+          fz = -gz;
+        }
+
+        // P2P: near-field contribution by direct summation
         for (const int si : p2p_list[ti]) 
         {
           const Cell& S = cells[si];
           for (size_t j = S.begin; j < S.end; ++j) 
           {
-            if (j == i || sq[j] == 0.0)     continue;
+            if (j == i || sq[j] == 0.0) continue;
             const double rx = sx[i] - sx[j], ry = sy[i] - sy[j], rz = sz[i] - sz[j];
             const double r2 = rx * rx + ry * ry + rz * rz;
-            if (r2 < min_sq)    continue;
-            const double f = sq[j] / (r2 * std::sqrt(r2));
-            fx += rx * f;
-            fy += ry * f;
-            fz += rz * f;
+            if (r2 < min_sq) continue;
+            const double inv_r = 1.0 / std::sqrt(r2);
+            if (want_forces) 
+            {
+              const double f = sq[j] * inv_r / r2;
+              fx += rx * f;
+              fy += ry * f;
+              fz += rz * f;
+            }
+            if (want_energy) pot += sq[j] * inv_r;
           }
         }
-        ex[i] = fx;
-        ey[i] = fy;
-        ez[i] = fz;
+
+        if (want_forces) 
+        {
+          ex[i] = fx;
+          ey[i] = fy;
+          ez[i] = fz;
+        }
+        if (want_energy) 
+        {
+          phi[i] = pot;
+        }
       }
     }
   }
 
-  // --- Back to physical forces, in the caller's order ---------------------
-  for (size_t k = 0; k < n; ++k) 
+  // --- Goes back to physical units, in the caller's order -------------------------
+  if (want_forces) 
   {
-    const size_t p = ws.order[k];
-    const double s = force_scale * sq[k];
-    (*forces)[p] = Real3{static_cast<real_t>(s * ex[k]),  static_cast<real_t>(s * ey[k]), static_cast<real_t>(s * ez[k])};
+    for (size_t k = 0; k < n; ++k) 
+    {
+      const size_t p = ws.order[k];
+      const double s = force_scale * sq[k];
+      (*forces)[p] = Real3{static_cast<real_t>(s * ex[k]),
+                           static_cast<real_t>(s * ey[k]),
+                           static_cast<real_t>(s * ez[k])};
+    }
+  }
+
+  if (want_energy) 
+  {
+    double sum = 0.0;
+    for (size_t k = 0; k < n; ++k) sum += sq[k] * phi[k];
+    *potential_energy = 0.5 * k_coulomb / length * sum; // 0.5 since each pair appears twice and 1/length undoes the coordinate rescaling
   }
 }
 
@@ -611,17 +687,13 @@ void ComputeFastMultipoleCoulombForces(ResourceManager* rm, int order, real_t th
   rm->ForEachAgent([&](Agent* agent) 
   {
     auto* particle = FastCast(agent);
-    if (particle == nullptr || particle->IsAnnihilated())  return;
-    if (particle->GetCharge() == 0.0) 
-    {
-      particle->SetCoulombForce(Real3{0.0, 0.0, 0.0});  // neutral: no force
-    } 
-    else 
-    {
+    if (particle == nullptr || particle->IsAnnihilated()) return;
+    if (particle->GetCharge() == 0.0)
+      particle->SetCoulombForce(Real3{0.0, 0.0, 0.0});  // neutral therefore no force
+    else
       charged.push_back(particle);
-    }
   });
-  if (charged.empty())  return;
+  if (charged.empty()) return;
 
   std::vector<FastMultipoleSolver::Source> sources(charged.size());
   for (size_t i = 0; i < charged.size(); ++i) 
@@ -632,11 +704,30 @@ void ComputeFastMultipoleCoulombForces(ResourceManager* rm, int order, real_t th
 
   FastMultipoleSolver solver(order, theta);
   std::vector<Real3> forces;
-  solver.Compute(sources, &forces);
+  solver.ComputeForces(sources, &forces);
 
   for (size_t i = 0; i < charged.size(); ++i) 
   {
     charged[i]->SetCoulombForce(forces[i]);
   }
 }
-}
+
+// real_t ComputeFastMultipoleEnergy(ResourceManager* rm, int order, real_t theta) 
+// {
+//   std::vector<FastMultipoleSolver::Source> sources;
+//   rm->ForEachAgent([&](Agent* agent) 
+//   {
+//     auto* particle = FastCast(agent);
+//     if (particle == nullptr || particle->IsAnnihilated() || particle->GetCharge() == 0.0)   return;
+//     FastMultipoleSolver::Source s;
+//     s.position = particle->GetPosition();
+//     s.charge = particle->GetCharge();
+//     sources.push_back(s);
+//   });
+//   if (sources.empty()) return 0.0;
+
+//   FastMultipoleSolver solver(order, theta);
+//   return solver.ComputePotentialEnergy(sources);
+// }
+
+}  // namespace bdm

@@ -43,12 +43,9 @@ namespace bdm
     //     an expansion, so everything is summed directly and the result is
     //     the exact all-pairs force (a validation reference).
 
-
-
     class FastMultipoleSolver 
     {
         public:
-
             struct Source 
             {
                 Real3 position;
@@ -57,8 +54,14 @@ namespace bdm
 
             FastMultipoleSolver(int order, real_t theta, size_t leaf_capacity = 32);
 
-            // Computes the Coulomb force (Newtons) on every source from all the others. `forces` is resized to sources.size()
-            void Compute(const std::vector<Source>& sources, std::vector<Real3>* forces) const;
+            // Coulomb force (Newtons) on every source from all the others forces` is resized to sources.size().
+            void ComputeForces(const std::vector<Source>& sources, std::vector<Real3>* forces) const;
+
+            // Total Coulomb potential energy (Joules): U = 1/2 * k * sum_i q_i * phi_i.
+            real_t ComputePotentialEnergy(const std::vector<Source>& sources) const;
+
+            // Both in one pass (shares all the expensive work). Either output may be nullptr.
+            void Compute(const std::vector<Source>& sources, std::vector<Real3>* forces, double* potential_energy = nullptr) const;
 
         private:
             int order_ = 4;
@@ -66,6 +69,7 @@ namespace bdm
             size_t leaf_capacity_ = 32;
             std::shared_ptr<const FmmTables> tables_;
     };
+
     void ComputeFastMultipoleCoulombForces(ResourceManager* rm, int order, real_t theta);
 }
 #endif

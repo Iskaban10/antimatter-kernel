@@ -8,11 +8,20 @@
 
 namespace bdm 
 {
-  enum class CoulombMethod 
+  enum class ComputationMethod 
   {
     kStandard,  // Exact inside the cutoff, zero beyond it.
     kBarnesHut, // Barnes-Hut octree over all particles, does not involve any cut-off radius
     kFastMultipole, // FastMultipole method, to be implemented
+  };
+
+  struct EnergyComputationSettings
+  {
+    ComputationMethod method = ComputationMethod::kStandard;
+    real_t cutoff_radius = 0.0;   // for kStandard
+    real_t barnes_hut_theta = 0.5;  // for kBarnesHut
+    real_t fast_multipole_theta = 0.5;    // for kFastMultipole
+    real_t fast_multipole_order = 4;     // for kFastMultipole
   };
 
   // Coulomb interaction configuration, registered as a ParamGroup
@@ -27,7 +36,8 @@ namespace bdm
 
     bool coulomb_enabled = true;
 
-    std::string coulomb_method = "standard";
+    std::string coulomb_method = "standard";  // coulomb force computation method
+    std::string energy_method = "standard"; // total energy computation method
 
     real_t cutoff_radius = 0.0; // cut-off radius for the standard calculation method
 
@@ -36,7 +46,8 @@ namespace bdm
     real_t fast_multipole_order = 4;  // order for fmm, should ideally lie between 3 and 6, higher value leads to more accuracy but more computation time
     real_t fast_multipole_theta = 0.5;  // theta for fast-multipole algorithm, lies between 0 and 1. Smaller the value more accurate the analysis
 
-    CoulombMethod GetCoulombMethod() const;
+    ComputationMethod GetCoulombMethod() const;
+    ComputationMethod GetEnergyMethod() const;
 
     void LoadParams(const std::string& filename = "params.json");
     void PrintParams() const;

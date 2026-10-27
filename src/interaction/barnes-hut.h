@@ -28,48 +28,49 @@ namespace bdm
     class BarnesHutTree 
     {
         public:
+            struct Source 
+            {
+                Real3 position;
+                real_t charge = 0.0;
+            };
 
-        struct Source 
-        {
-            Real3 position;
-            real_t charge = 0.0;
-        };
+            // Passed as `self_index` when the target is not one of the sources.
+            static constexpr size_t kNoSelf = static_cast<size_t>(-1);
 
-        // Passed as `self_index` when the target is not one of the sources.
-        static constexpr size_t kNoSelf = static_cast<size_t>(-1);
+            explicit BarnesHutTree(real_t theta, size_t leaf_capacity = 8);
+            void Build(const std::vector<Source>& sources);
 
-        explicit BarnesHutTree(real_t theta, size_t leaf_capacity = 8);
-        void Build(const std::vector<Source>& sources);
+            Real3 ComputeForce(const Real3& position, real_t charge, size_t self_index = kNoSelf) const;
+            real_t ComputePotential(const Real3& position, size_t self_index = kNoSelf) const;
+            
+            size_t NumNodes() const { return nodes_.size(); }
 
-        Real3 ComputeForce(const Real3& position, real_t charge, size_t self_index = kNoSelf) const;
+        //private:
+            struct Node 
+            {
+                Real3 center = {0.0, 0.0, 0.0};  // geometric center of the cube
+                real_t half_size = 0.0;          // half of the cube's edge length
+                real_t positive_charge = 0.0;    // sum of positive charges
+                real_t negative_charge = 0.0;    // sum of |negative charges| (>= 0)
+                Real3 positive_center = {0.0, 0.0, 0.0};
+                Real3 negative_center = {0.0, 0.0, 0.0};
+                int children[8] = {-1, -1, -1, -1, -1, -1, -1, -1};
+                size_t begin = 0;  // particle range [begin, end) within order_
+                size_t end = 0;
+                bool is_leaf = true;
+            };
 
-        size_t NumNodes() const { return nodes_.size(); }
+            int BuildNode(size_t begin, size_t end, const Real3& center, real_t half, int depth);
+            void Accumulate(int node_index, const Real3& position, real_t charge, size_t self_index, Real3* force) const;
+            void AccumulatePotential(int node_index, const Real3& position, size_t self_index, real_t* phi) const;
 
-        // private:
-        struct Node 
-        {
-            Real3 center = {0.0, 0.0, 0.0};  // geometric center of the cube
-            real_t half_size = 0.0;          // half of the cube's edge length
-            real_t positive_charge = 0.0;    // sum of positive charges
-            real_t negative_charge = 0.0;    // sum of |negative charges| (>= 0)
-            Real3 positive_center = {0.0, 0.0, 0.0};
-            Real3 negative_center = {0.0, 0.0, 0.0};
-            int children[8] = {-1, -1, -1, -1, -1, -1, -1, -1};
-            size_t begin = 0;  // particle range [begin, end) within order_
-            size_t end = 0;
-            bool is_leaf = true;
-        };
-
-        int BuildNode(size_t begin, size_t end, const Real3& center, real_t half, int depth);
-        void Accumulate(int node_index, const Real3& position, real_t charge, size_t self_index, Real3* force) const;
-
-        real_t theta_ = 0.5;
-        real_t squared_theta_ = 0.25;
-        size_t leaf_capacity_ = 8;
-        std::vector<Source> sources_;
-        std::vector<size_t> order_;
-        std::vector<size_t> scratch_;
-        std::vector<Node> nodes_;
+            real_t theta_ = 0.5;
+            real_t squared_theta_ = 0.25;
+            size_t leaf_capacity_ = 8;
+            std::vector<Source> sources_;
+            std::vector<size_t> order_;
+            std::vector<size_t> scratch_;
+            std::vector<Node> nodes_;
     };
 
     void ComputeBarnesHutCoulombForces(ResourceManager* rm, real_t theta);
