@@ -5,20 +5,20 @@
   "z0": 0.01,
   "rho0": 0.01,
   "dt": 1e-12,
-  "num_steps": 500,
-  "particle_populations": { "positron": 5e5, "electron": 5e5 },
-  "initial_cloud_radius": 1e-4,
-  "initial_temperature": 0,
+  "num_steps": 5e4,
+  "particle_populations": { "positron": 1e2, "electron": 1e2, "antiproton": 0},
+  "particle_temperatures": {"positron": 4, "electron": 4, "antiproton": 1000},
+  "initial_cloud_radii": {"radius_x": 1e-4, "radius_y": 1e-4, "radius_z": 1e-4},
 
   "coulomb_enabled": true,
-  "coulomb_computation_method": "fast-multipole",
-  "eenrgy_computation_method": "fast-multipole",
+  "coulomb_computation_method": "barnes-hut",
+  "energy_computation_method": "barnes-hut",
   "cutoff_radius": 1e-3,
-  "barnes_hut_theta": 0.5,
+  "barnes_hut_theta": 0.7,
   "fast_multipole_order": 4,
   "fast_multipole_theta": 0.5,
 
   "annihilation_enabled": true,
-  "contact_radius": 1e-9,
+  "contact_radius": 5e-6,
   "annihilation_probability": 1
 }

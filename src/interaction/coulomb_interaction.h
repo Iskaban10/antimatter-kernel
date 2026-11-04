@@ -1,20 +1,13 @@
 #ifndef INTERACTION_COULOMB_INTERACTION_H_
 #define INTERACTION_COULOMB_INTERACTION_H_
 
-#include "core/behavior/behavior.h"
-#include "core/container/math_array.h"
+#include "core/real_t.h"
 
 namespace bdm 
 {
-  class CoulombInteraction : public Behavior 
-  {
-    BDM_BEHAVIOR_HEADER(CoulombInteraction, Behavior, 1);
-
-  public:
-    CoulombInteraction() = default;
-    ~CoulombInteraction() override = default;
-    void Run(Agent* agent) override;
-  };
+  class ResourceManager;
+  // Cutoff-based Coulomb force between charged particles, only pairs closer than `cutoff_radius` interact
+  void ComputeStandardCoulombForces(ResourceManager* rm, real_t cutoff_radius);
 }
 
 #endif

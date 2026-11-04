@@ -69,26 +69,22 @@ namespace bdm
     stochastic->PrintParams();
 
     const ComputationMethod coulomb_method = interaction->GetCoulombMethod();
+    const bool use_standard = interaction->coulomb_enabled && coulomb_method == ComputationMethod::kStandard;
     const bool use_barnes_hut = interaction->coulomb_enabled && coulomb_method == ComputationMethod::kBarnesHut;
     const bool use_fast_multipole = interaction->coulomb_enabled && coulomb_method == ComputationMethod::kFastMultipole;
     const real_t energy_cutoff_radius = interaction->cutoff_radius;
 
-    std::default_random_engine rng(physics->seed);
-    std::uniform_real_distribution<real_t> offset(-physics->initial_cloud_radius, physics->initial_cloud_radius);
-
     PenningTrapField field = PenningTrapField::MakeFromGeometry( physics->b0, physics->trap_voltage, physics->z0, physics->rho0);
-    const std::vector<Real3> particle_velocities = PenningTrapField::SetParticleVelocities( physics->populations, physics->initial_temperature);
+    const std::vector<Real3> particle_positions = PenningTrapField::SetParticlePositions( physics->populations, physics->initial_cloud_radii, physics->seed);  // array of random distributions of particles inside the initial cloud in the Penning trap
+    const std::vector<Real3> particle_velocities = PenningTrapField::SetParticleVelocities( physics->populations, physics->particle_temperatures);  // array of gaussian distribution of particle velocities
 
     size_t particle_counter = 0; // counter to keep track on particles
     for (const auto& [species, count] : physics->populations) 
     {
       for (size_t i = 0; i < count; i++)
       {
-        Real3 position{offset(rng), offset(rng), offset(rng)};
-        auto* particle = new ChargedAntiparticle(position, species, particle_velocities[particle_counter++]);
-
-        if (interaction->coulomb_enabled && coulomb_method == ComputationMethod::kStandard)
-          particle->AddBehavior(new CoulombInteraction());
+        auto* particle = new ChargedAntiparticle(particle_positions[particle_counter], species, particle_velocities[particle_counter]);
+        particle_counter++;
 
         particle->AddBehavior(new LorentzForce(&field));
 
@@ -114,7 +110,7 @@ namespace bdm
     } 
     else 
     {
-      energy_csv << "step,kinetic_energy_J,trap_potential_energy_J,energy_potential_energy_J,total_energy_J,num_active_particles,fractional_drift\n";
+      energy_csv << "step,kinetic_energy_J,trap_potential_energy_J,potential_energy_J,total_energy_J,num_active_particles,fractional_drift\n";
     }
 
     EnergyBreakdown initial_energy = ComputeTotalEnergy(rm, field, energy_settings);
@@ -137,6 +133,8 @@ namespace bdm
         ComputeBarnesHutCoulombForces(rm, interaction->barnes_hut_theta);
       else if (use_fast_multipole)  
         ComputeFastMultipoleCoulombForces(rm, interaction->fast_multipole_order, interaction->fast_multipole_theta);
+      else
+        ComputeStandardCoulombForces(rm, interaction->cutoff_radius);
 
       simulation.GetScheduler()->Simulate(1);
 

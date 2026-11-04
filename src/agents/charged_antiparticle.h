@@ -69,7 +69,8 @@ namespace bdm
     Real3 velocity_ = {0.0, 0.0, 0.0};
     real_t mass_ = 0.0;
     real_t charge_ = 0.0;
-    ParticleSpecies species_ = ParticleSpecies::kAntiproton;
+    ParticleSpecies species_ = ParticleSpecies::kElectron;
+    int species_id = 3;
     bool annihilated_ = false;
     Real3 coulomb_force_ = {0.0, 0.0, 0.0};
 

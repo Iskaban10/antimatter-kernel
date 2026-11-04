@@ -30,7 +30,7 @@ namespace bdm
   void InteractionParams::LoadParams(const std::string& filename) 
   {
     std::ifstream file(filename);
-    if (!file.is_open()) 
+    if (!file.is_open())
     {
       std::cout << "InteractionParams::LoadParams: '" << filename << "' not found -- using default values." << std::endl;
       return;
@@ -48,23 +48,23 @@ namespace bdm
 
   void InteractionParams::PrintParams() const 
   {
-    std::cout << "[interaction] \ncoulomb_enabled=" << (coulomb_enabled ? "true" : "false") << "\ncoulomb_computation_method=" << coulomb_method;
+    std::cout << "[interaction] \ncoulomb_enabled = " << (coulomb_enabled ? "true" : "false") << "\ncoulomb_computation_method = " << coulomb_method;
     if (coulomb_enabled)
     {
       if (coulomb_method == "standard") 
       {
-        std::cout << "\ncutoff_radius=" << cutoff_radius << " m";
+        std::cout << "\ncutoff_radius = " << cutoff_radius << " m";
       } 
       else if (coulomb_method == "barnes-hut") 
       {
-        std::cout << "\nbarnes_hut_theta=" << barnes_hut_theta;
+        std::cout << "\nbarnes_hut_theta = " << barnes_hut_theta;
       } 
       else if (coulomb_method == "fast-multipole") 
       {
-        std::cout << "\nfast_multipole_order=" << fast_multipole_order << "\nfast_multipole_theta=" << fast_multipole_theta;
+        std::cout << "\nfast_multipole_order = " << fast_multipole_order << "\nfast_multipole_theta = " << fast_multipole_theta;
       }
     }
-    std::cout << "\nenergy_computation_method=" << energy_method;
+    std::cout << "\nenergy_computation_method = " << energy_method;
     std::cout << std::endl;
   }
 

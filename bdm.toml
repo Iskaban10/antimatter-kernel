@@ -1,14 +1,11 @@
 [simulation]
 output_dir = "output"
-environment = "octree"
-nanoflann_depth = 10
-unschedule_default_operations = ["load balancing"]
 
 [visualization]
 export = true
 export_generate_pvsm = true
-interval = 10
+interval = 100
 
   [[visualize_agent]]
-  name = "ChargedAntiparticle"
-  
+    name = "ChargedAntiparticle"
+    additional_data_members = [ "species_id"]

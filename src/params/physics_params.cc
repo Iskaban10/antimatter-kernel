@@ -53,7 +53,6 @@ namespace bdm
     z0 = j.value("z0", z0);
     rho0 = j.value("rho0", rho0);
     dt = j.value("dt", dt);
-    initial_temperature = j.value("initial_temperature", initial_temperature);
 
     if (j.contains("particle_populations")) 
     {
@@ -64,25 +63,52 @@ namespace bdm
       }
     }
 
+    if (j.contains("particle_temperatures")) 
+    {
+      particle_temperatures.clear();
+      for (const auto& [name, count] : j.at("particle_temperatures").items()) 
+      {
+        particle_temperatures[ParseSpecies(name)] = count.get<size_t>();
+      }
+    }
+
     num_steps = j.value("num_steps", num_steps);
-    initial_cloud_radius = j.value("initial_cloud_radius", initial_cloud_radius);
+    if (j.contains("initial_cloud_radii")) 
+    {
+      const auto& radii_json = j.at("initial_cloud_radii");
+      
+      if (radii_json.contains("radius_x")) {
+        initial_cloud_radii[0] = radii_json.at("radius_x").get<real_t>();
+      }
+      if (radii_json.contains("radius_y")) {
+        initial_cloud_radii[1] = radii_json.at("radius_y").get<real_t>();
+      }
+      if (radii_json.contains("radius_z")) {
+        initial_cloud_radii[2] = radii_json.at("radius_z").get<real_t>();
+      }
+    }
   }
 
   void PhysicsParams::PrintParams() const 
   {
-    std::cout << "[physics] \nseed=" << seed
-              << "\ninitial_cloud_radius=" << initial_cloud_radius << " m"
-              << "\nb0=" << b0 << " T"
-              << "\ntrap_voltage=" << trap_voltage << " V"
-              << "\nz0=" << z0 << " m"
-              << "\nrho0=" << rho0 << " m"
-              << "\ndt=" << dt << " s"
-              << "\nnum_steps=" << num_steps << std::endl;
+    std::cout << "[physics] \nseed = " << seed
+              << "\nb0 = " << b0 << " T"
+              << "\ntrap_voltage = " << trap_voltage << " V"
+              << "\nz0 = " << z0 << " m"
+              << "\nrho0 = " << rho0 << " m"
+              << "\ndt = " << dt << " s"
+              << "\nnum_steps = " << num_steps << std::endl;
 
     std::cout << "\nPARTICLE POPULATIONS:";
     for (const auto& [species, count] : populations) 
     {
       std::cout << '\n' << SpeciesToString(species) << " x " << count;
+    }
+    std::cout<<'\n';
+    std::cout << "\nPARTICLE TEMPERATURES:";
+    for (const auto& [species, temp] : particle_temperatures)
+    {
+      std::cout << '\n' << SpeciesToString(species) << " - " << temp << " Kelvin";
     }
     std::cout<<'\n';
   }
@@ -95,18 +121,30 @@ namespace bdm
     if (dt <= 0.0) throw std::invalid_argument("PhysicsParams: dt must be > 0");
     if (num_steps <= 0)
       throw std::invalid_argument("PhysicsParams: num_steps must be > 0");
-    if (initial_temperature < 0)
-      throw std::invalid_argument("PhysicsParams: Initial temperature in Kelvin must be >= 0");
+    for (const auto& [species, temperature] : particle_temperatures) 
+    {
+      if (temperature < 0)
+        throw std::invalid_argument("PhysicsParams: initial temperature of particles count must be >= 0");
+    }
     if (populations.empty())
       throw std::invalid_argument("PhysicsParams: populations must not be empty");
     for (const auto& [species, count] : populations) 
     {
       if (count < 0)
-        throw std::invalid_argument("PhysicsParams: every population count must be > 0");
+        throw std::invalid_argument("PhysicsParams: every population count must be >= 0");
     }
-    if (initial_cloud_radius <= 0.0 || initial_cloud_radius >= z0 || initial_cloud_radius >= rho0) 
+    // initial cloud radius checks
+    if (initial_cloud_radii[0] <= 0.0 || initial_cloud_radii[1] <= 0.0 || initial_cloud_radii[2] <= 0.0) 
     {
-      throw std::invalid_argument( "PhysicsParams: initial_cloud_radius must be > 0 and well inside " "(z0, rho0)");
+      throw std::invalid_argument("PhysicsParams: All components of initial_cloud_radii must be > 0.");
+    }
+    if (initial_cloud_radii[0] >= rho0 || initial_cloud_radii[1] >= rho0) 
+    {
+      throw std::invalid_argument("PhysicsParams: Radial radii (X and Y) must be well inside trap radius (rho0).");
+    }
+    if (initial_cloud_radii[2] >= z0) 
+    {
+      throw std::invalid_argument("PhysicsParams: Axial radius (Z) must be well inside trap length (z0).");
     }
   }
 }

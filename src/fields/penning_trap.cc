@@ -48,7 +48,7 @@ namespace bdm
   }
 
   // set velocities for all the particles inside the trap
-  std::vector<Real3> PenningTrapField::SetParticleVelocities(const std::map<ParticleSpecies, size_t>& populations, real_t initial_temp)
+  std::vector<Real3> PenningTrapField::SetParticleVelocities(const std::map<ParticleSpecies, size_t>& populations, const std::map<ParticleSpecies, real_t>& particle_temperatures)
   {
     size_t total = 0;
     for (const auto& entry : populations)   total += static_cast<size_t>(entry.second);
@@ -59,16 +59,19 @@ namespace bdm
   
     for (const auto& [species, count] : populations) 
     {
+      auto temp_it = particle_temperatures.find(species);
+      double initial_temp = (temp_it != particle_temperatures.end()) ? temp_it->second : 0.0;
+
       if (initial_temp == 0.0) 
       {
         // since std::normal_distribution requires sigma > 0, so handle T = 0 as in a cold species is simply at rest.
         velocities.insert(velocities.end(), static_cast<size_t>(count), Real3{0.0, 0.0, 0.0});
         continue;
       }
-  
+
       const double mass = static_cast<double>(GetDefaultSpeciesProperties(species).mass);
       // Thermal speed scale per Cartesian component, in m/s, depends on the species' mass.
-      const double sigma = std::sqrt(static_cast<double>(constants::kBoltzmannConstant) * static_cast<double>(initial_temp) / mass);
+      const double sigma = std::sqrt(static_cast<double>(constants::kBoltzmannConstant) * initial_temp / mass);
 
       std::random_device rd;
       std::mt19937 rng(rd());
@@ -109,5 +112,50 @@ namespace bdm
       }
     }
     return velocities;
+  }
+
+  // set positions for all the particles inside the trap
+  std::vector<Real3> PenningTrapField::SetParticlePositions(const std::map<ParticleSpecies, size_t>& populations, const Real3& radii, const int seed)
+  {
+    std::vector<Real3> positions;
+  
+    // Calculate total number of particles to pre-allocate vector memory
+    size_t total_particles = 0;
+    for (const auto& [species, count] : populations)    total_particles += count;
+    positions.reserve(total_particles);
+
+    // Initialize the random number engine
+    std::default_random_engine rng(seed);
+    std::uniform_real_distribution<real_t> offset_x(-radii[0], radii[0]);
+    std::uniform_real_distribution<real_t> offset_y(-radii[1], radii[1]);
+    std::uniform_real_distribution<real_t> offset_z(-radii[2], radii[2]);
+  
+    // Generate coordinates for each particle category block
+  for (const auto& [species, count] : populations) 
+  {
+    for (size_t i = 0; i < count; ++i) 
+    {
+      Real3 point;
+      bool inside_ellipsoid = false;
+
+      // Rejection sampling loop
+      while (!inside_ellipsoid) 
+      {
+        point[0] = offset_x(rng);
+        point[1] = offset_y(rng);
+        point[2] = offset_z(rng);
+
+        // Ellipsoid normalization math layout: (x/a)² + (y/b)² + (z/c)² <= 1
+        real_t norm_x = point[0] / radii[0];
+        real_t norm_y = point[1] / radii[1];
+        real_t norm_z = point[2] / radii[2];
+
+        if ((norm_x * norm_x) + (norm_y * norm_y) + (norm_z * norm_z) <= 1.0) 
+          inside_ellipsoid = true; // Coordinate verified
+      }
+      positions.push_back(point);
+    }
+  }
+    return positions;
   }
 }

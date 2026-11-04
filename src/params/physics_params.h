@@ -1,8 +1,8 @@
 #ifndef PARAMS_PHYSICS_PARAMS_H_
 #define PARAMS_PHYSICS_PARAMS_H_
 
-#include <string>
 #include <map>
+#include <vector>
 
 #include "agents/particle_species.h"
 #include "core/param/param_group.h"
@@ -39,8 +39,8 @@ namespace bdm
     // --- Initial particle cloud ------------------------------------------------
     int num_particles = 10;
     std::map<ParticleSpecies, size_t> populations = {{ParticleSpecies::kPositron, 10}};
-    real_t initial_cloud_radius = 1e-4;
-    real_t initial_temperature = 0; // initial temperature of environment
+    std::map<ParticleSpecies, real_t> particle_temperatures = {{ParticleSpecies::kElectron, 4},{ParticleSpecies::kPositron, 4},{ParticleSpecies::kAntiproton, 1000}}; // initial temperatures of particles
+    Real3 initial_cloud_radii{0.0001, 0.0001, 0.0001};  // radii along each axis for the cloud
 
     void LoadParams(const std::string& filename = "params.json"); // loads params.json
     void PrintParams() const; // print params that have been loaded

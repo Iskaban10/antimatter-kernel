@@ -54,17 +54,17 @@ namespace bdm
       real_t GetCharacteristicDimension() const { return d_; }
       void SetCharacteristicDimension(real_t d) { d_ = d; }
 
-      static std::vector<Real3> SetParticleVelocities(const std::map<ParticleSpecies, size_t>& populations, real_t initial_temp);
+      static std::vector<Real3> SetParticlePositions(const std::map<ParticleSpecies, size_t>& populations, const Real3& radii, const int seed = 42);
+      static std::vector<Real3> SetParticleVelocities(const std::map<ParticleSpecies, size_t>& populations, const std::map<ParticleSpecies, real_t>& particle_temperatures);
 
     private:
       // Axial magnetic field strength, Tesla.
-      real_t b0_ = 0.0;
+      real_t b0_ = 1.0;
 
       // Trap (ring-to-endcap) voltage, Volts.
-      real_t trap_voltage_ = 0.0;
+      real_t trap_voltage_ = 10.0;
 
-      // Characteristic trap dimension, meters. Must be > 0 for
-      // GetElectricField to return finite values; see MakeFromGeometry.
+      // Characteristic trap dimension, meters. Must be > 0 for GetElectricField to return finite values.
       real_t d_ = 1.0;
   };
 }

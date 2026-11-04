@@ -11,6 +11,7 @@ namespace bdm
         const SpeciesProperties props = GetDefaultSpeciesProperties(species_);
         mass_ = props.mass;
         charge_ = props.charge;
+        species_id = static_cast<int>(species);
     }
 
     void ChargedAntiparticle::SetSpecies(ParticleSpecies species, bool keep_overrides) 
