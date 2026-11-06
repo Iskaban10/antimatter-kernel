@@ -69,7 +69,6 @@ namespace bdm
     stochastic->PrintParams();
 
     const ComputationMethod coulomb_method = interaction->GetCoulombMethod();
-    const bool use_standard = interaction->coulomb_enabled && coulomb_method == ComputationMethod::kStandard;
     const bool use_barnes_hut = interaction->coulomb_enabled && coulomb_method == ComputationMethod::kBarnesHut;
     const bool use_fast_multipole = interaction->coulomb_enabled && coulomb_method == ComputationMethod::kFastMultipole;
     const real_t energy_cutoff_radius = interaction->cutoff_radius;
