@@ -9,9 +9,9 @@
 
 namespace bdm 
 {
-  void LorentzForce::Run(Agent* agent) 
+  void LorentzForce::Run(Agent* agent)
   {
-      auto* particle = FastCast(agent);
+      auto* particle = static_cast<ChargedAntiparticle*>(agent);
 
       if (particle == nullptr || field_ == nullptr) { return; } // uncharged particle hence return
       if (particle->IsAnnihilated()) { return; } // annihilated particle hence return

@@ -17,6 +17,7 @@ namespace bdm
   namespace 
   {
     constexpr real_t kMinSquaredDistance = 1e-30;
+    constexpr bool kRefreshEnvironment = true;  // set to false if function runs after schduler's 'update environment'
   }
 
   void ComputeStandardCoulombForces(ResourceManager* rm, real_t cutoff_radius) 
@@ -24,12 +25,11 @@ namespace bdm
     std::vector<ChargedAntiparticle*> particles;
     rm->ForEachAgent([&](Agent* agent) 
     {
-      auto* particle = FastCast(agent);
+      auto* particle = static_cast<ChargedAntiparticle*>(agent);
       if (particle != nullptr && !particle->IsAnnihilated())  particles.push_back(particle);
     });
 
     if (particles.empty())  return;
-
     if (cutoff_radius <= 0.0) 
     {
       for (auto* particle : particles)  particle->SetCoulombForce(Real3{0.0, 0.0, 0.0});
@@ -37,25 +37,30 @@ namespace bdm
     }
 
     auto* environment = Simulation::GetActive()->GetEnvironment();
-    const real_t squared_cutoff = cutoff_radius * cutoff_radius;
 
+    if (kRefreshEnvironment)  environment->Update();  // Build refresh the grid single-threaded, before the parallel region.
+
+    const real_t squared_cutoff = cutoff_radius * cutoff_radius;
     std::vector<Real3> forces(particles.size(), Real3{0.0, 0.0, 0.0});
 
     const int64_t n = static_cast<int64_t>(particles.size());
     #pragma omp parallel for schedule(dynamic, 64)
-    for (int64_t i = 0; i < n; ++i) 
+    for (int64_t i = 0; i < n; ++i)
     {
       Agent* agent = particles[i];
       const real_t q_i = particles[i]->GetCharge();
       if (q_i == 0.0)  continue;
       const Real3 pos_i = particles[i]->GetPosition();
 
+      // inf or NaN position would make the query outside the grid
+      if (!std::isfinite(pos_i[0]) || !std::isfinite(pos_i[1]) || !std::isfinite(pos_i[2]))  continue;
+
       Real3 total_force{0.0, 0.0, 0.0};
 
       auto accumulate_force = L2F([&](Agent* neighbor, real_t squared_distance) 
       {
         if (neighbor == agent)  return;
-        auto* other = FastCast(neighbor);
+        auto* other = static_cast<ChargedAntiparticle*>(neighbor);
         if (other == nullptr || other->IsAnnihilated())  return;
         const real_t q_j = other->GetCharge();
         if (q_j == 0.0)  return;

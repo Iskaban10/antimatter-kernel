@@ -2,7 +2,10 @@
 
 #include <fstream>
 #include <iostream>
+#include <cmath>
+#include <algorithm>
 #include <stdexcept>
+#include <utils/constants.h>
 
 #include "json.hpp"
 
@@ -52,7 +55,10 @@ namespace bdm
     trap_voltage = j.value("trap_voltage", trap_voltage);
     z0 = j.value("z0", z0);
     rho0 = j.value("rho0", rho0);
-    dt = j.value("dt", dt);
+    bath_temp = j.value("bath_temperature", bath_temp);
+    cooling_scale = j.value("cooling_scale", cooling_scale);
+    double mass_charge_ratio = 1e-6;
+    // simulation_duration = j.value("seconds_to_simulate", simulation_duration);
 
     if (j.contains("particle_populations")) 
     {
@@ -60,8 +66,12 @@ namespace bdm
       for (const auto& [name, count] : j.at("particle_populations").items()) 
       {
         populations[ParseSpecies(name)] = count.get<size_t>();
+        real_t mass = GetDefaultSpeciesProperties(ParseSpecies(name)).mass;
+        real_t charge = std::abs(GetDefaultSpeciesProperties(ParseSpecies(name)).charge);
+        mass_charge_ratio = std::min(mass_charge_ratio, mass / charge);
       }
     }
+    dt = (mass_charge_ratio * constants::pi) / (b0 * 2);
 
     if (j.contains("particle_temperatures")) 
     {
@@ -73,7 +83,7 @@ namespace bdm
     }
 
     num_steps = j.value("num_steps", num_steps);
-    if (j.contains("initial_cloud_radii")) 
+    if (j.contains("initial_cloud_radii"))
     {
       const auto& radii_json = j.at("initial_cloud_radii");
       
@@ -113,12 +123,11 @@ namespace bdm
     std::cout<<'\n';
   }
 
-  void PhysicsParams::Validate() const 
+  void PhysicsParams::Validate() const
   {
     if (b0 <= 0.0) throw std::invalid_argument("PhysicsParams: b0 must be > 0");
     if (z0 <= 0.0 || rho0 <= 0.0)
       throw std::invalid_argument("PhysicsParams: z0 and rho0 must be > 0");
-    if (dt <= 0.0) throw std::invalid_argument("PhysicsParams: dt must be > 0");
     if (num_steps <= 0)
       throw std::invalid_argument("PhysicsParams: num_steps must be > 0");
     for (const auto& [species, temperature] : particle_temperatures) 
@@ -126,6 +135,8 @@ namespace bdm
       if (temperature < 0)
         throw std::invalid_argument("PhysicsParams: initial temperature of particles count must be >= 0");
     }
+    if (bath_temp < 0.0) throw std::invalid_argument("PhysicsParams: bath_temperature must be > 0");
+    if (cooling_scale <= 1.0) throw std::invalid_argument("PhysicsParams: cooling_scale must be >= 1");
     if (populations.empty())
       throw std::invalid_argument("PhysicsParams: populations must not be empty");
     for (const auto& [species, count] : populations) 

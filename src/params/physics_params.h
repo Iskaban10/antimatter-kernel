@@ -33,8 +33,12 @@ namespace bdm
     real_t rho0 = 0.01;
 
     // Timestep for the Lorentz push, seconds, should be small relative to the cyclotron period (2*pi*m / (|q| B0))
-    real_t dt = 1e-12;
-    size_t num_steps = 1000; // Number of simulation steps to run.
+    real_t dt = 1e-9;
+    size_t num_steps = 5000; // Number of simulation steps to run.
+
+    // Cooling Params
+    real_t bath_temp = 0.5;
+    real_t cooling_scale = 10;
 
     // --- Initial particle cloud ------------------------------------------------
     int num_particles = 10;

@@ -7,6 +7,9 @@ namespace bdm
 {
     namespace constants 
     {
+        // value of pi
+        inline constexpr real_t pi = 3.14159265358979323846;
+        
         // Elementary charge, in Coulombs (C).
         inline constexpr real_t kElementaryCharge = 1.602176634e-19;
 

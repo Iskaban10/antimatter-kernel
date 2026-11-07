@@ -9,7 +9,7 @@ namespace bdm
   PenningTrapField::PenningTrapField(real_t b0, real_t trap_voltage, real_t characteristic_dimension)
       : b0_(b0), trap_voltage_(trap_voltage), d_(characteristic_dimension) 
   {
-    assert(d_ > 0.0 && "Penning trap characteristic dimension must be > 0");
+    if (d_ <= 0.0) throw std::invalid_argument("characteristic dimension must be > 0");
   }
 
   PenningTrapField PenningTrapField::MakeFromGeometry(real_t b0, real_t trap_voltage, real_t z0, real_t rho0) 
@@ -48,11 +48,11 @@ namespace bdm
   }
 
   // set velocities for all the particles inside the trap
-  std::vector<Real3> PenningTrapField::SetParticleVelocities(const std::map<ParticleSpecies, size_t>& populations, const std::map<ParticleSpecies, real_t>& particle_temperatures)
+  std::vector<Real3> PenningTrapField::SetParticleVelocities(const std::map<ParticleSpecies, size_t>& populations, const std::map<ParticleSpecies, real_t>& particle_temperatures, const int seed)
   {
     size_t total = 0;
     for (const auto& entry : populations)   total += static_cast<size_t>(entry.second);
-    if (total <= 1)   throw std::invalid_argument("PenningTrapField: Total particles in PenningTrap should be > 1");
+    if (total <= 0)   throw std::invalid_argument("PenningTrapField: Total particles in PenningTrap should be > 0");
   
     std::vector<Real3> velocities;
     velocities.reserve(total);
@@ -74,7 +74,7 @@ namespace bdm
       const double sigma = std::sqrt(static_cast<double>(constants::kBoltzmannConstant) * initial_temp / mass);
 
       std::random_device rd;
-      std::mt19937 rng(rd());
+      std::mt19937 rng(seed);
       std::normal_distribution<double> gauss(0.0, sigma);
       std::vector<double> raw(3 * count);
       for (size_t i = 0; i < 3 * count; ++i)  raw[i] = gauss(rng);
@@ -94,7 +94,7 @@ namespace bdm
           mean[d] /= static_cast<double>(count);
         }
         // Rescaling by sqrt(count/(count-1)) to restore the expected mean kinetic energy per particle which was lowered due to the constraint of mean drift = 0
-        const double rescale = std::sqrt(count / (count - 1));
+        const double rescale = std::sqrt(static_cast<double>(count) / static_cast<double>(count - 1));
         for (size_t i = 0; i < count; ++i) 
         {
           for (int d = 0; d < 3; ++d)     
@@ -121,7 +121,8 @@ namespace bdm
   
     // Calculate total number of particles to pre-allocate vector memory
     size_t total_particles = 0;
-    for (const auto& [species, count] : populations)    total_particles += count;
+    for (const auto& [species, count] : populations)    
+      total_particles += count;
     positions.reserve(total_particles);
 
     // Initialize the random number engine

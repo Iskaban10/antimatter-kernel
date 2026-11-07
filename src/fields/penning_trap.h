@@ -55,7 +55,7 @@ namespace bdm
       void SetCharacteristicDimension(real_t d) { d_ = d; }
 
       static std::vector<Real3> SetParticlePositions(const std::map<ParticleSpecies, size_t>& populations, const Real3& radii, const int seed = 42);
-      static std::vector<Real3> SetParticleVelocities(const std::map<ParticleSpecies, size_t>& populations, const std::map<ParticleSpecies, real_t>& particle_temperatures);
+      static std::vector<Real3> SetParticleVelocities(const std::map<ParticleSpecies, size_t>& populations, const std::map<ParticleSpecies, real_t>& particle_temperatures, const int seed = 42);
 
     private:
       // Axial magnetic field strength, Tesla.

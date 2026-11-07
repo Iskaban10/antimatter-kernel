@@ -37,7 +37,7 @@ namespace bdm
     }
     nlohmann::json j;
     file >> j;
-    coulomb_enabled = j.value("coulomb_enabled", coulomb_enabled);
+    coulomb_enabled = j.value("coulomb_forces_enabled", coulomb_enabled);
     coulomb_method = j.value("coulomb_computation_method", coulomb_method);
     energy_method = j.value("energy_computation_method", energy_method);
     cutoff_radius = j.value("cutoff_radius", cutoff_radius);
