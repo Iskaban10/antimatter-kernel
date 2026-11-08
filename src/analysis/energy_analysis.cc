@@ -81,7 +81,9 @@ namespace bdm
     }
   }  // namespace
 
-  EnergyBreakdown ComputeTotalEnergy(ResourceManager* rm, const PenningTrapField& field, const EnergyComputationSettings& energy)
+    EnergyBreakdown ComputeTotalEnergy(ResourceManager* rm, const PenningTrapField& field,
+                                     const EnergyComputationSettings& energy,
+                                     EnergyHistory* history)
   {
     EnergyBreakdown result;
 
@@ -89,7 +91,7 @@ namespace bdm
     std::vector<ChargedAntiparticle*> particles;
     rm->ForEachAgent([&](Agent* agent)
     {
-      auto* particle = static_cast<ChargedAntiparticle*>(agent);
+      auto* particle = dynamic_cast<ChargedAntiparticle*>(agent);
       if (particle != nullptr && !particle->IsAnnihilated()) particles.push_back(particle);
     });
 
@@ -121,6 +123,24 @@ namespace bdm
         break;
     }
 
+    // Time is centered which averages the potentials of the previous call
+    // The first call has x(0) and v(0) at the same time, so it needs no correction.
+    if (history != nullptr)
+    {
+      const real_t raw_trap = result.trap_potential;
+      const real_t raw_coulomb = result.energy_potential;
+
+      if (history->has_previous)
+      {
+        result.trap_potential = 0.5 * (history->prev_trap_potential + raw_trap);
+        result.energy_potential = 0.5 * (history->prev_coulomb_potential + raw_coulomb);
+      }
+
+      history->prev_trap_potential = raw_trap;
+      history->prev_coulomb_potential = raw_coulomb;
+      history->has_previous = true;
+    }
+
     return result;
   }
-}  // namespace bdm
+}

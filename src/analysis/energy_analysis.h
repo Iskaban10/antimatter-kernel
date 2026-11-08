@@ -22,6 +22,17 @@ namespace bdm
     real_t Total() const { return kinetic + trap_potential + energy_potential; }
   };
 
-  EnergyBreakdown ComputeTotalEnergy(ResourceManager* rm, const PenningTrapField& field, const EnergyComputationSettings& energy);
-}
-#endif
+  // State carried between calls so the potential energy can be time-centered.
+  struct EnergyHistory
+  {
+    bool has_previous = false;
+    real_t prev_trap_potential = 0.0;
+    real_t prev_coulomb_potential = 0.0;
+  };
+
+  // Kinetic energy comes from the stored v(n+1/2) and the potentials from x(n+1).
+  // If `history` is given, the potentials are averaged with the previous call's values so they pair with the half-step velocity.
+  EnergyBreakdown ComputeTotalEnergy(ResourceManager* rm, const PenningTrapField& field, const EnergyComputationSettings& energy, EnergyHistory* history = nullptr);
+}  // namespace bdm
+
+#endif  // ANALYSIS_ENERGY_ANALYSIS_H_

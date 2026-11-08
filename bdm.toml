@@ -1,10 +1,12 @@
 [simulation]
 output_dir = "output"
+environment = "octree"
+unschedule_default_operations = ["load balancing", "mechanical forces"]
 
 [visualization]
 export = true
 export_generate_pvsm = true
-interval = 100
+interval = 1
 
   [[visualize_agent]]
     name = "ChargedAntiparticle"

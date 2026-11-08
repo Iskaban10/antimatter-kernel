@@ -136,10 +136,10 @@ namespace bdm
         throw std::invalid_argument("PhysicsParams: initial temperature of particles count must be >= 0");
     }
     if (bath_temp < 0.0) throw std::invalid_argument("PhysicsParams: bath_temperature must be > 0");
-    if (cooling_scale <= 1.0) throw std::invalid_argument("PhysicsParams: cooling_scale must be >= 1");
+    if (cooling_scale > 1.0) throw std::invalid_argument("PhysicsParams: cooling_scale must be <= 1");
     if (populations.empty())
       throw std::invalid_argument("PhysicsParams: populations must not be empty");
-    for (const auto& [species, count] : populations) 
+    for (const auto& [species, count] : populations)
     {
       if (count < 0)
         throw std::invalid_argument("PhysicsParams: every population count must be >= 0");

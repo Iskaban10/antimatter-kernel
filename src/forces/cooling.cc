@@ -46,7 +46,7 @@ namespace bdm
 
     const real_t v_par = v * b_hat;           // velocity projection along to magnetic field
     const Real3 v_par_vec = b_hat * v_par;  // conversion back to vector
-    Real3 v_perp = v - v_par_vec;           // velcoity projection perpendicular to magnetic field
+    Real3 v_perp = v - v_par_vec;           // velocity projection perpendicular to magnetic field
 
     // Exact exponential damping, stable even when dt >> tau_E.
     const real_t decay = std::exp(-dt / (2.0 * tau_E));

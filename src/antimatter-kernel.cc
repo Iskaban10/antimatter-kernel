@@ -18,6 +18,8 @@
 #include <fstream>
 #include <iostream>
 #include <random>
+#include <string>
+#include <vector>
 
 #include "biodynamo.h"
 
@@ -68,8 +70,11 @@ namespace bdm
     std::cout<<std::endl;
     stochastic->PrintParams();
 
+    // Cyclotron cooling removes energy on purpose, so it must be OFF when
+    // validating energy conservation of the integrator. Set to true for real physics runs.
+
     const ComputationMethod coulomb_method = interaction->GetCoulombMethod();
-    // const bool use_standard = interaction->coulomb_enabled && coulomb_method == ComputationMethod::kStandard;
+    const bool use_standard = interaction->coulomb_enabled && coulomb_method == ComputationMethod::kStandard;
     const bool use_barnes_hut = interaction->coulomb_enabled && coulomb_method == ComputationMethod::kBarnesHut;
     const bool use_fast_multipole = interaction->coulomb_enabled && coulomb_method == ComputationMethod::kFastMultipole;
     const real_t energy_cutoff_radius = interaction->cutoff_radius;
@@ -85,7 +90,6 @@ namespace bdm
       {
         auto* particle = new ChargedAntiparticle(particle_positions[particle_counter], species, particle_velocities[particle_counter]);
         particle_counter++;
-
         particle->AddBehavior(new LorentzForce(&field));
         particle->AddBehavior(new CyclotronCooling(&field, /*tau_scale=*/physics->cooling_scale, /*bath_temp_K=*/physics->bath_temp));
 
@@ -103,6 +107,16 @@ namespace bdm
 
     const size_t energy_log_interval = physics->num_steps >= 100 ? physics->num_steps / 100 : 1; // aprrox 1 % of number of steps
 
+    // Time-centering needs the previous step's potentials, so this lives for the whole run.
+    EnergyHistory energy_history;
+
+    auto evaluate_energy = [&]() -> EnergyBreakdown
+    {
+      EnergyBreakdown e = ComputeTotalEnergy(rm, field, energy_settings, &energy_history);
+      if (!interaction->coulomb_enabled)  e.energy_potential = 0.0;
+      return e;
+    };
+
     const std::string energy_csv_path = simulation.GetOutputDir() + "/energy_analysis_data.csv";
     std::ofstream energy_csv(energy_csv_path);
     if (!energy_csv.is_open())
@@ -111,10 +125,18 @@ namespace bdm
     } 
     else 
     {
-      energy_csv << "step,kinetic_energy_J,trap_potential_energy_J,potential_energy_J,total_energy_J,num_active_particles,fractional_drift\n";
+      energy_csv << "step,kinetic_energy_J,trap_potential_energy_J,potential_energy_J,total_energy_J,num_active_particles,fractional_drift,absolute_drift_J\n";
     }
 
-    EnergyBreakdown initial_energy = ComputeTotalEnergy(rm, field, energy_settings);
+    EnergyBreakdown initial_energy = evaluate_energy();
+
+    // Characteristic energy for the drift: the trap depth (every species carries charge +/- e).
+    // Dividing by the initial total is unreliable because it can be tiny for cold, bound particles.
+    const real_t elementary_charge = 1.602176634e-19;
+    real_t energy_scale = elementary_charge * std::abs(physics->trap_voltage);
+    if (energy_scale <= 0.0)  energy_scale = std::abs(initial_energy.Total());
+    if (energy_scale <= 0.0)  energy_scale = 1.0;
+
     std::cout << "\nstep 0  KE=" << initial_energy.kinetic
               << " PE_trap=" << initial_energy.trap_potential
               << " PE_coulomb=" << initial_energy.energy_potential
@@ -125,7 +147,7 @@ namespace bdm
                 << initial_energy.trap_potential << ","
                 << initial_energy.energy_potential << ","
                 << initial_energy.Total() << ","
-                << initial_energy.num_active_particles << "," << 0.0 << "\n";
+                << initial_energy.num_active_particles << "," << 0.0 << "," << 0.0 << "\n";
     }
 
     for (size_t step = 1; step <= physics->num_steps; ++step) 
@@ -134,30 +156,41 @@ namespace bdm
         ComputeBarnesHutCoulombForces(rm, interaction->barnes_hut_theta);
       else if (use_fast_multipole)  
         ComputeFastMultipoleCoulombForces(rm, interaction->fast_multipole_order, interaction->fast_multipole_theta);
-      else
+      else if (use_standard)
         ComputeStandardCoulombForces(rm, interaction->cutoff_radius);
 
       simulation.GetScheduler()->Simulate(1);
 
-      if (step % energy_log_interval == 0 || step == physics->num_steps) 
+      const bool log_step = (step % energy_log_interval == 0) || (step == physics->num_steps);
+
+      // The time-centered energy pairs step n with step n-1, so the step just before
+      // a log step must be evaluated too (even though it is not printed).
+      const bool need_energy = log_step || ((step + 1) % energy_log_interval == 0) || (step + 1 == physics->num_steps);
+
+      if (need_energy)
       {
-        EnergyBreakdown e = ComputeTotalEnergy(rm, field, energy_settings);
-        const real_t fractional_drift = initial_energy.Total() != 0.0
-                ? (e.Total() - initial_energy.Total()) / std::abs(initial_energy.Total())
-                : 0.0;
-        std::cout << "step " << step << "  KE=" << e.kinetic
-                  << " PE_trap=" << e.trap_potential
-                  << " PE_coulomb=" << e.energy_potential
-                  << " TOTAL=" << e.Total() << " J"
-                  << "  (fractional drift from step 0: " << fractional_drift << ")" << std::endl;
-        
-        // write energy log results to the csv file
-        if (energy_csv.is_open()) 
+        EnergyBreakdown e = evaluate_energy();
+
+        if (log_step)
         {
-          energy_csv << step << "," << e.kinetic << "," << e.trap_potential
-                    << "," << e.energy_potential << "," << e.Total() << ","
-                    << e.num_active_particles << "," << fractional_drift
-                    << "\n";
+          const real_t absolute_drift = e.Total() - initial_energy.Total();
+          const real_t fractional_drift = absolute_drift / energy_scale;
+
+          std::cout << "step " << step << "  KE=" << e.kinetic
+                    << " PE_trap=" << e.trap_potential
+                    << " PE_coulomb=" << e.energy_potential
+                    << " TOTAL=" << e.Total() << " J"
+                    << "  (drift: " << absolute_drift << " J, "
+                    << fractional_drift << " of trap depth)" << std::endl;
+
+          // write energy log results to the csv file
+          if (energy_csv.is_open()) 
+          {
+            energy_csv << step << "," << e.kinetic << "," << e.trap_potential
+                      << "," << e.energy_potential << "," << e.Total() << ","
+                      << e.num_active_particles << "," << fractional_drift << ","
+                      << absolute_drift << "\n";
+          }
         }
       }
     }
@@ -175,14 +208,6 @@ namespace bdm
       const auto& pos = particle->GetPosition();
       std::cout << "final position: (" << pos[0] << ", " << pos[1] << ", " << pos[2] << ")" << std::endl;
     });
-
-    // rm->ForEachAgent([](Agent* agent) 
-    // {
-    //   auto* particle = static_cast<ChargedAntiparticle*>(agent);
-    //   if (particle == nullptr)  return;
-    //   const auto& pos = particle->GetVelocity();
-    //   std::cout << "final position: (" << pos[0] << ", " << pos[1] << ", " << pos[2] << ")" << std::endl;
-    // });
 
     auto end_time = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> simulation_duration = end_time - start_time;
