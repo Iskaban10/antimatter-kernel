@@ -1,18 +1,23 @@
-# Antimatter-Kernel
+# Antimatter-kernel
 
-An agent-based simulation of charged antiparticles confined in a Penning trap, built on BioDynaMo.
+This repository provides an **agent-based simulation** of charged antimatter plasmas confined in a **Penning trap**, built on the [BioDynaMo](https://biodynamo.org) framework. Charged particles and anti-particles are BioDynaMo agents that move under the trap's electromagnetic fields, their mutual Coulomb interaction, optional cyclotron radiation cooling and stochastic annihilation on proximity to opposite species.
 
-The project follows the [Agent-based Large-Scale Antimatter Simulation](https://compiler-research.org/open_projects?tag=all#agent-based-large-scale-antimatter-simulation) project from compiler-research.org, which aims to extend BioDynaMo to charged-particle simulation of the kind used in antimatter experiments such as CERN's AEgIS.
+The project is part of an effort to extend BioDynaMo with a plugin module for charged-particle simulation by integrating compuational modeling and particle physics, motivated by the [prior report](https://repository.cern/records/7capf-rqp49) based on Penning-trap simulations for the CERN AEgIS experiment.
 
->Status: Early Development
+> **Status:** Early development. All quantities are in SI units unless stated otherwise.
 
+---
 
 ## Table of Contents
 1. [Building the simulation](#building-the-simulation)
 2. [Running the simulation](#running-the-simulation)
 3. [Project Overview](#project-overview)
-4. [Project Structure](#project-structure)
-5. [Input Parameters](#input-parameters)
+4. [Project Example](#project-example)
+5. [Project Structure](#project-structure)
+6. [Physics Model](#physics-model)
+7. [Dependencies](#dependencies)
+8. [Input Parameters](#input-parameters)
+9. [Visualizing Results](#visualizing-results)
 
 ---
 ## Building the simulation
@@ -44,23 +49,69 @@ Option 2:
 ./build/antimatter-kernel
 ```
 ---
---- 
+---
 
 ## Project Overview
 
-AntimatterKernel is an agent-based model, written in C++ on top of BioDynaMo, that simulates such ensembles. Each antiparticle is an agent carrying its own position, velocity, mass, charge and species, and the module provides the physics as composable BioDynaMo plugins:
+A **Penning trap** confines charged particles using a strong axial magnetic field together with a static electric quadrupole field. Traps of this kind are used to hold and manipulate antimatter, for example positrons and antiprotons for antihydrogen formation. Simulating the plasma in the trap requires following many interacting charged particles over a very large number of time steps, which makes it a natural fit for a high-performance agent-based framework.
 
-- **Penning-trap external fields:** a uniform axial magnetic field plus a hyperbolic-electrode quadrupole electrostatic potential.
-- **Lorentz-force dynamics:** particle motion is advanced with the Boris algorithm, the standard integrator for charged-particle motion in magnetic fields. Unlike explicit Euler integration, it does not introduce spurious numerical heating of the cyclotron motion over many orbits.
-- **Pairwise Coulomb interaction:** computed through BioDynaMo's neighbor-search infrastructure with a configurable cutoff radius. The Coulomb force is folded into the same symmetric half-kick as the trap's electric field inside the Boris step, so the combined system keeps second-order accuracy instead of being applied as a separate, less accurate velocity kick.
-- **Stochastic annihilation:** particle-antiparticle pairs (positron-electron, antiproton-proton) that come into contact can annihilate with a configurable probability, using a two-step mark-then-remove scheme so annihilation events remain observable in the output for one step.
-- **Multi-species support:** antiproton, positron, antihydrogen, electron and proton, each with SI-unit default mass and charge.
+The **antimatter-kernel** models each particle as a BioDynaMo agent and lets users:
 
-The project aims to turn Penning-trap prototypes into a reusable, documented and scalable module for antimatter-motivated studies and other charged-particle systems.
+1. Set up a trap from its geometry (`b0`, `trap_voltage`, `z0`, `rho0`).
+2. Load several species at once, each species with its own population and temperature.
+3. Choose between a direct, a Barnes-Hut and a fast multipole Coulomb solver.
+4. Switch cyclotron cooling and annihilation on or off.
+5. Track kinetic, trap and Coulomb potential energy over time and export the results to CSV and ParaView.
+---
 
-### Validation: Energy Analysis
+## Project Example
 
-The magnetic field does no work on a charged particle, so for a correct and adequately time-resolved integrator the total energy (kinetic + trap potential + Coulomb potential) should stay approximately constant during a run. The module logs this at regular intervals and writes it to `energy_analysis.csv` inside the run's output directory. Steady, monotonic growth of the fractional drift is the signature of an integration problem (for example `dt` too large relative to the cyclotron period). The Coulomb potential energy is computed with the *same* cutoff radius as the force, so any drift observed reflects the integrator and not the cutoff approximation.
+### Parameter Configuration
+
+The is a minimal example case run: 100 electrons, 100 positrons, intial_temperature set as 1000K, both Coulomb interaction and annihilation enabled.
+
+```json
+{
+  "seed": 42,
+  "b0": 1,
+  "trap_voltage": 10,
+  "z0": 0.01,
+  "rho0": 0.01,
+
+  "num_steps": 1e2,
+
+  "particle_populations": { "positron": 100, "electron": 100},
+  "particle_temperatures": { "positron": 1e3, "electron": 1e3},
+  "initial_cloud_radii": { "radius_x": 1e-4, "radius_y": 1e-4, "radius_z": 1e-4},
+
+  "bath_temperature": 4,
+  "cooling_scale": 1,
+
+  "coulomb_forces_enabled": true,
+  "coulomb_computation_method": "standard",
+  "energy_computation_method": "standard",
+  "cutoff_radius": 1e-5,
+  "barnes_hut_theta": 0.7,
+  "fast_multipole_order": 4,
+  "fast_multipole_theta": 0.5,
+
+  "annihilation_enabled": true,
+  "contact_radius": 5e-6,
+  "annihilation_probability": 1
+}
+```
+
+### Rate of exchange in energy
+![Rate of exchange in energy](./assets/images/rate_of_energy_exchange.png) 
+
+### Fractional drift in energy throughout simulation
+![Fractional drift in energy throughout simulation](./assets/images/drift.png)
+
+### Annihilation events
+![Annihilation events](./assets/images/annihilation_events.png) 
+
+### Simulation in Paraview
+<video src="./assets/videos/demo_simulation.mp4" controls width="100%"></video>
 
 ---
 
@@ -70,124 +121,211 @@ The project is organized into the following components:
 
 ### Core Simulation Files (`src/`)
 
-- **[`antimatter-kernel.h`](src/antimatter-kernel.h) / [`antimatter-kernel.cc`](src/antimatter-kernel.cc)**: The entry point. The header contains the inline `Simulate` function, which registers the parameter groups, loads `params.json`, builds the Penning-trap field, seeds the particle cloud, attaches the behaviors to each agent, runs the simulation step by step, and logs the energy analysis. The `.cc` file only contains `main`.
+- **`antimatter-kernel.h` / `antimatter-kernel.cc`**: Declare and define the `Simulate` function and `main`. `Simulate` registers the parameter groups, builds the `PenningTrapField`, creates the particles with their behaviours, runs the main loop (Coulomb forces, then one scheduler step), and writes the energy log.
 
-- **[`charged_antiparticle.h`](src/agents/charged_antiparticle.h) / [`charged_antiparticle.cc`](src/agents/charged_antiparticle.cc)**: The `ChargedAntiparticle` agent. It stores position, diameter, velocity, mass, charge, species and annihilation state, implements the virtual position, diameter, displacement interface required by BioDynaMo's `Agent`, and holds a per-step Coulomb-force value consumed by the Lorentz force.
+- **`agents/charged_antiparticle.h` / `.cc`**: Defines the `ChargedAntiparticle` agent, which carries position, velocity, charge, mass, species, an annihilated flag and the Coulomb force computed for the current step.
 
-- **[`particle_species.h`](src/agents/particle_species.h)**: The `ParticleSpecies` enum and a table of default SI mass and charge per species.
+- **`agents/particle_species.h`**: Defines the particle species (positron, electron, antiproton, proton) and their properties.
 
-- **[`penning_trap.h`](src/fields/penning_trap.h) / [`penning_trap.cc`](src/fields/penning_trap.cc)**: `PenningTrapField`, which returns the electric field, magnetic field and electric potential at a given position. It consists of pure field geometry i.e. it knows nothing about any particle's mass, charge or velocity.
+- **`fields/penning_trap.h` / `.cc`**: Defines the `PenningTrapField`. It is built from the trap geometry with `MakeFromGeometry`, provides the electric and magnetic field at a position, and generates the initial particle positions in a configurable *ellipsoidal cloud* and Gaussian thermal velocities.
 
-- **[`lorentz.h`](src/forces/lorentz.h) / [`lorentz.cc`](src/forces/lorentz.cc)**: The `LorentzForce` behavior. Advances velocity and position with the Boris algorithm, combining the trap electric field and the stored Coulomb force in one symmetric half-kick around the magnetic rotation. It reads `dt` from the registered `PhysicsParams`.
+- **`forces/lorentz.h` / `.cc`**: The `LorentzForce` behaviour. It advances each particle with the Boris pusher, combining the trap electric field and the Coulomb force, and then resets the stored Coulomb force.
 
-- **[`coulomb_interaction.h`](src/interaction/coulomb_interaction.h) / [`coulomb_interaction.cc`](src/interaction/coulomb_interaction.cc)**: The `CoulombInteraction` behavior. Sums the pairwise Coulomb force on each agent from neighbors within the cutoff radius (via BioDynaMo's `Environment::ForEachNeighbor`) and stores it on the agent. It does not integrate velocity or position itself. **It must run before `LorentzForce` on each agent.**
+- **`forces/cooling.h` / `.cc`**: The `CyclotronCooling` behaviour. It damps the velocity component perpendicular to **B** using the Larmor radiation rate, with an optional Langevin thermal floor set by `bath_temperature`.
 
-- **[`annihilation.h`](src/interaction/annihilation.h) / [`annihilation.cc`](src/interaction/annihilation.cc)**: The `AnnihilationInteraction` behavior and the `IsAntiparticlePair` helper. Marks matching particle-antiparticle pairs as annihilated with the configured probability, then removes them from the simulation on the following step.
+- **`interaction/coulomb_interaction.h` / `.cc`**: `ComputeStandardCoulombForces`, the direct solver. It uses BioDynaMo's neighbour search with a cutoff radius and OpenMP.
 
-- **[`physics_params.h`](src/params/physics_params.h) / [`physics_params.cc`](src/params/physics_params.cc)**, **[`interaction_params.h`](src/params/interaction_params.h) / [`interaction_params.cc`](src/params/interaction_params.cc)**, **[`stochastic_params.h`](src/params/stochastic_params.h) / [`stochastic_params.cc`](src/params/stochastic_params.cc)**: These three BioDynaMo `ParamGroup`s hold the trap/time-integration/initial-cloud settings, the Coulomb settings, and the annihilation settings respectively. Each provides `LoadParams` (read from `params.json`, keeping defaults for anything not specified), `PrintParams`, and `Validate`.
+- **`interaction/barnes-hut.h` / `.cc`**: `ComputeBarnesHutCoulombForces`, an octree solver with a monopole approximation and an opening angle `theta`. `theta = 0` reproduces the exact all-pairs result.
 
-- **[`energy_analysis.h`](src/analysis/energy_analysis.h) / [`energy_analysis.cc`](src/analysis/energy_analysis.cc)**: It contains `ComputeTotalEnergy`, which returns the kinetic, trap-potential and Coulomb-potential energy and the number of active (non-annihilated) particles.
+- **`interaction/fast-multipole.h` / `.cc`**: `ComputeFastMultipoleCoulombForces`, the fast multipole solver with configurable `order` and `theta`.
 
-- **[`constants.h`](src/utils/constants.h)**: Physical constants in SI units and shared simulation defaults, typed as BioDynaMo's `real_t`.
+- **`interaction/annihilation.h` / `.cc`**: The `AnnihilationInteraction` behaviour. Particle/antiparticle pairs within `contact_radius` annihilate with probability `annihilation_probability`.
+
+- **`analysis/energy_analysis.h` / `.cc`**: `ComputeTotalEnergy` and `EnergyBreakdown`: kinetic energy, trap potential energy and Coulomb potential energy.
+
+- **`params/physics_params.h` / `.cc`**, **`interaction_params.h` / `.cc`**, **`stochastic_params.h` / `.cc`**: The parameter groups (`PhysicsParams`, `InteractionParams`, `StochasticParams`). Each provides `LoadParams` to read `params.json`, `Validate` to check the values and `PrintParams` to display them.
+
+- **`utils/constants.h`**: Physical constants (for example the Coulomb constant).
 
 ### Configuration Files
 
-- **[`params.json`](params.json)**: JSON file for configuring physics, interaction and annihilation settings without recompiling.
+- **`params.json`**: JSON parameter file for configuring runs without recompilation.
+- **`bdm.toml`**: BioDynaMo runtime configuration (neighbour-search environment, scheduled operations, ParaView export).
+- **`CMakeLists.txt`**: CMake build configuration that integrates with BioDynaMo.
 
-- **[`bdm.toml`](bdm.toml)**: BioDynaMo-specific configuration for the neighbor-search backend, output directory and visualization export.
+### Tests
 
-### Output
+- **`test/`**: Unit tests (GoogleTest).
 
-Each run writes into BioDynaMo's per-run output directory (`output/antimatter-kernel/`):
+---
 
-- **`energy_analysis.csv`**: one row per logged step with the columns `step`, `kinetic_energy_J`, `trap_potential_energy_J`, `coulomb_potential_energy_J`, `total_energy_J`, `num_active_particles` and `fractional_drift` (the relative change of total energy from step 0).
+## Physics Model
+
+### Equation of motion
+
+Each particle of charge `q` and mass `m` is advanced with the Boris algorithm:
+
+```
+F_total = q E_trap(x) + F_coulomb
+v-      = v + (F_total / m) (dt / 2)
+t       = (q B / m) (dt / 2)
+v'      = v- + v- x t
+s       = 2 t / (1 + |t|^2)
+v+      = v- + v' x s
+v_new   = v+ + (F_total / m) (dt / 2)
+x_new   = x + v_new dt
+```
+
+The Boris scheme preserves the magnitude of the velocity under a pure magnetic rotation, which is why it is the standard choice for magnetised plasmas. The time step `dt` must resolve the cyclotron period `2 pi m / (|q| B)`.
+
+### Coulomb interaction
+
+```
+F_ij = k_C q_i q_j / r^2        (directed along r_i - r_j)
+```
+
+| Method | Key | Notes |
+| --- | --- | --- |
+| Direct | `standard` | Neighbour search with a finite `cutoff_radius`. A cutoff that is small compared to the cloud truncates a long-range force, so it is to be treated as an approximation. |
+| Barnes-Hut | `barnes_hut` | Octree with monopole terms; the accuracy set by `barnes_hut_theta` from *params.json*. |
+| Fast multipole | `fast_multipole` | The accuracy here is set by `fast_multipole_order` and `fast_multipole_theta` from *params.json*. |
+
+### Cyclotron cooling
+
+A gyrating charge always radiates according to the Larmor formula. The perpendicular energy decays exponentially with e-folding time
+
+```
+tau_E = 3 pi eps0 m^3 c^3 / (q^4 B^2)
+```
+
+and the perpendicular velocity decays at half that rate:
+
+```
+v_perp(t + dt) = v_perp(t) * exp(-dt / (2 tau_E))
+```
+
+The parallel velocity (along **B**) is left untouched, and the exact exponential keeps the update stable even when `tau_E` is shortened artificially.
+
+- **Thermal floor:** with `bath_temperature > 0`, Gaussian noise of variance `kB T / m * (1 - decay^2)` is added to the two perpendicular components each step, so the perpendicular motion relaxes to the bath temperature.
+- **Time scaling:** the cooling time actually used is `tau_used = cooling_scale * tau_E`. Real cooling times are far longer than a simulated run, so values well below 1 are needed to see cooling. 
+
+Both of the above parameters are taken from `params.json`.
+**Note: ** - A reduced `cooling_scale` changes the balance between cooling and competing processes such as Coulomb heating. Although the equilibrium temperature is unaffected, but dynamics that depend on that balance differ from the real system. Setting the `cooling_scale` to 1 to simulates real system results.
+
+### Annihilation
+
+Particles of opposite matter type that come within `contact_radius` annihilate with probability `annihilation_probability` per check. Annihilated particles are skipped by the force, cooling and energy routines and are removed from subsequent simulation evaluations.
+
+## Dependencies
+
+- [BioDynaMo](https://biodynamo.org/)
+- CMake (the version required by your BioDynaMo installation)
+- GCC or Clang with C++17 support
+- OpenMP
+- GoogleTest (for unit testing)
+- ParaView (optional, for visualization)
+
+**Note:** Ensure BioDynaMo is installed and sourced before building or running the simulation. When it is sourced, `[bdm-<version>]` appears in your prompt:
+
+```
+. <path_to_biodynamo>/build/bin/thisbdm.sh
+```
+
 ---
 
 ## Input Parameters
 
-All simulation parameters are set in `params.json` without the need to recompile. Any parameter that is not specified keeps its default value. Parameters are grouped by the `ParamGroup` that reads them.
+All parameters are set in `params.json` and can be changed without recompiling the model. The tables below list the values from the `params.json` shipped with the repository.
 
-### General Simulation Parameters (`PhysicsParams`)
+### Trap and Run Parameters
 
-These are the parameters most commonly changed when designing a run.
+| Parameter | Value | Units | Description |
+| --- | --- | --- | --- |
+| `seed` | 42 | - | Seed for random number generation (reproducibility) |
+| `b0` | 1 | T | Axial magnetic field strength |
+| `trap_voltage` | 10.0 | V | Trap electrode potential |
+| `z0` | 0.01 | m | Trap half-length (geometry) |
+| `rho0` | 0.01 | m | Trap radial dimension (geometry) |
+| `num_steps` | 1e2 | steps | Number of simulation steps |
 
-| Parameter | Default | Units | Description |
-|-----------|---------|-------|-------------|
-| `seed` | 42 | - | Seed for the random placement of the initial particle cloud, for reproducibility |
-| `particle_populations` | `{ "positron": 100, "electron": 100 }` | - | Species of every seeded particle: `antiproton`, `positron`, `antihydrogen`, `electron` or `proton` along with their respective population count|
-| `initial_cloud_radius` | 1e-4 | m | Particles are placed at random positions within ± this distance of the trap center. Must be well inside `z0` and `rho0` |
-| `dt` | 1e-12 | s | Integration timestep. Must be much smaller than the cyclotron period 2πm / (\|q\|B₀) (about 36 steps per period by default) |
-| `num_steps` | 50000 | - | Number of simulation steps. Total simulated time is `dt × num_steps` |
 
-### Trap Parameters (`PhysicsParams`)
+### Particle Parameters
 
-| Parameter | Default | Units | Description |
-|-----------|---------|-------|-------------|
-| `b0` | 1.0 | T | Strength of the uniform axial magnetic field |
-| `trap_voltage` | 10.0 | V | Trap (ring-to-endcap) voltage U₀ of the quadrupole potential. A positive value axially confines a positively charged species; use a negative value to trap a negative species |
-| `z0` | 0.01 | m | Endcap half-distance |
-| `rho0` | 0.01 | m | Ring-electrode radius |
+| Parameter | Value | Units | Description |
+| --- | --- | --- | --- |
+| `particle_populations` | `{positron: 100, electron: 100}` | - | Number of particles per species |
+| `particle_temperatures` | `{positron: 1000, electron: 1000}` | K | Initial temperature per species (sets the Gaussian velocity spread) |
+| `initial_cloud_radii` | `{radius_x: 1e-4, radius_y: 1e-4, radius_z: 1e-4}` | m | Radii of the initial ellipsoidal cloud |
 
-The characteristic trap dimension is derived internally as `d² = z0²/2 + rho0²/4`.
+### Cooling Parameters
 
-### Coulomb Interaction Parameters (`InteractionParams`)
+| Parameter | Value | Units | Description |
+| --- | --- | --- | --- |
+| `bath_temperature` | 4 | K | Bath temperature for the thermal floor; `0` gives pure damping |
+| `cooling_scale` | 1 | - | Multiplier on the physical cooling time (`tau_used = cooling_scale * tau_E`) |
 
-| Parameter | Default | Units | Description |
-|-----------|---------|-------|-------------|
-| `coulomb_enabled` | true | - | Enables or disables the pairwise Coulomb interaction. Disable it to isolate single-particle (Lorentz-only) validation runs |
-| `cutoff_radius` | 1e-3 | m | Agents farther apart than this do not exert Coulomb force on each other. **There is no built-in default in the code (0 is rejected as invalid when Coulomb is enabled), so a value must be provided.** The shipped value is chosen to be much larger than the expected inter-particle spacing and much smaller than the trap dimensions; it should be revisited for different densities |
-| `barnes_hut_theta` | 0.5 | - | Sets the theta for the Barnes-Hut algorithm implementation, lies between 0 and 1 |
-| `fast_mulitpole_order` | 4 | - | Sets the order for the Fast-Multipole algorithm implementation, higher the value more accurate the results |
-| `fast_multipole_theta` | 0.5 | - | Sets the theta for the Fast-Multipole algorithm implementation, lies between 0 and 1 |
+With `b0 = 1` T and `cooling_scale = 1`, `tau_E` for an electron is about 2.6 s, so a 100-step run shows essentially no cooling. Hence, reduce the `cooling_scale` so that`tau_used` can be brought into the range of the simulated time, keeping it well above the cyclotron period (about 36 ps for an electron at 1 T).
 
-### Annihilation Parameters (`StochasticParams`)
+### Coulomb Interaction Parameters
 
-| Parameter | Default | Units | Description |
-|-----------|---------|-------|-------------|
-| `annihilation_enabled` | false | - | Enables or disables stochastic annihilation. Keep disabled unless specifically studying the mechanism |
-| `contact_radius` | 1e-9 | m | A particle-antiparticle pair closer than this is considered in contact and an annihilation attempt is evaluated |
-| `annihilation_probability` | 0.1 | - | Probability in [0, 1] of annihilation per step, per pair found within `contact_radius` |
+| Parameter | Value | Units | Description |
+| --- | --- | --- | --- |
+| `coulomb_forces_enabled` | true | - | Switch the Coulomb interaction on or off |
+| `coulomb_computation_method` | `"standard"` | - | `standard`, `barnes_hut` or `fast_multipole` |
+| `energy_computation_method` | `"standard"` | - | Method used for the Coulomb potential energy diagnostic |
+| `cutoff_radius` | 1e-5 | m | Neighbour cutoff for the `standard` solver |
+| `barnes_hut_theta` | 0.7 | - | Opening angle for Barnes-Hut, lower the theta more accurate the approximation |
+| `fast_multipole_order` | 4 | - | Expansion order for the fast multipole method |
+| `fast_multipole_theta` | 0.5 | - | Acceptance parameter for the fast multipole method |
 
-### Parameter Validation
+### Annihilation Parameters
 
-At startup every parameter group is validated and the program stops with an error message on an invalid configuration, for example `b0 <= 0`, `dt <= 0`, `initial_cloud_radius` not smaller than `z0` and `rho0`, `cutoff_radius <= 0` while Coulomb is enabled, or `annihilation_probability` outside [0, 1]. An unrecognized `species` name also stops the run rather than silently falling back to a default. The effective values used are printed at the start of every run.
+| Parameter | Value | Units | Description |
+| --- | --- | --- | --- |
+| `annihilation_enabled` | true | - | Switch annihilation on or off |
+| `contact_radius` | 5e-6 | m | Distance below which a particle/antiparticle pair can annihilate |
+| `annihilation_probability` | 1 | - | Probability of annihilation per check |
 
-### Parameter Configuration
+### `bdm.toml`
 
-To modify parameters, edit [`params.json`](params.json). Only include the parameters you want to change from their defaults. Example:
+BioDynaMo runtime settings. A configuration that uses the octree neighbour search:
 
-```json
-{
-  "seed": 42,
-  "b0": 1.0,
-  "trap_voltage": 10.0,
-  "z0": 0.01,
-  "rho0": 0.01,
-  "dt": 1e-12,
-  "num_steps": 500,
-  "particle_populations": { "positron": 100, "electron": 100 },
-  "initial_cloud_radius": 1e-4,
+```toml
+[simulation]
+output_dir = "output"
+environment = "octree"
+unschedule_default_operations = ["load balancing", "mechanical forces"]
 
-  "coulomb_enabled": true,
-  "coulomb_method": "standard",
-  "cutoff_radius": 1e-3,
-  "barnes_hut_theta": 0.5,
-  "fast_multipole_order": 4,
-  "fast_multipole_theta": 0.5,
+[visualization]
+export = true
+export_generate_pvsm = true
+interval = 100
 
-  "annihilation_enabled": false,
-  "contact_radius": 1e-7,
-  "annihilation_probability": 1
-}
+  [[visualize_agent]]
+    name = "ChargedAntiparticle"
+    additional_data_members = ["species_id"]
 ```
 
-### BioDynaMo Engine Configuration (`bdm.toml`)
+- `environment` selects the neighbour-search structure. Remove the line to use BioDynaMo's default uniform grid.
+- `unschedule_default_operations` removes `load balancing` (not supported by the octree environment) and `mechanical forces` (which would push agents apart as overlapping spheres on top of the Boris push and corrupt energy conservation).
+- `additional_data_members` requires `ChargedAntiparticle` to expose a data member named exactly `species_id`.
+- `interval` sets how often ParaView files are written. Raise it for large runs to limit disk use.
 
-| Key | Example | Description |
-|-----|---------|-------------|
-| `[simulation] output_dir` | `"output"` | Base directory for simulation output |
-| `[simulation] environment` | `"kd_tree"` | Neighbor-search backend: `uniform_grid`, `kd_tree` or `octree` |
-| `[visualization] export` | `true` | Export particle data for ParaView |
-| `[visualization] export_generate_pvsm` | `true` | Generate a ParaView state file (`.pvsm`) automatically |
-| `[visualization] interval` | `10` | Export every N-th step. With `num_steps = 50000` and `interval = 1` this writes 50,000 file sets, so raise it for long runs |
-| `[[visualize_agent]] name` | `"ChargedAntiparticle"` | Agent type to export (one block per agent type) |
+---
+
+## Visualizing Results
+
+Energy data is written to `./output/antimatter-kernel/energy_analysis_data.csv` with the columns:
+
+```
+step, kinetic_energy_J, trap_potential_energy_J, potential_energy_J,
+total_energy_J, num_active_particles, fractional_drift
+```
+
+Energy is logged about 100 times per run (every `num_steps / 100` steps) and at the final step. `fractional_drift` is `(E_total(t) - E_total(0)) / |E_total(0)|`. Without cooling and annihilation it stays small and serves as a check on the time step and the Coulomb method. With cooling on, the total energy is expected to decrease, since radiation removes energy.
+
+To visualize the 3D particle positions in ParaView, open the generated state file (the path follows BioDynaMo's output layout, for example):
+
+```
+paraview ./output/antimatter-kernel/antimatter-kernel.pvsm
+```
