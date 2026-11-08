@@ -111,7 +111,7 @@ The is a minimal example case run: 100 electrons, 100 positrons, intial_temperat
 ![Annihilation events](./assets/images/annihilation_events.png) 
 
 ### Simulation in Paraview
-<video src="./assets/videos/demo_simulation.mp4" controls width="100%"></video>
+<video src="https://github.com/user-attachments/assets/7510d179-4124-49e3-a62d-ef13209a3ff5" controls width="100%"></video>
 
 ---
 
