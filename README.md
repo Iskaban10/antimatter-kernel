@@ -64,7 +64,7 @@ The **antimatter-kernel** models each particle as a BioDynaMo agent and lets use
 5. Track kinetic, trap and Coulomb potential energy over time and export the results to CSV and ParaView.
 ---
 
-## Project Example
+## Example Simulation
 
 ### Parameter Configuration
 
