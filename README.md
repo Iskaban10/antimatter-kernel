@@ -181,7 +181,7 @@ The Boris scheme preserves the magnitude of the velocity under a pure magnetic r
 
 ### Coulomb interaction
 
-> $$F_{ij} = \frac{k_C q_i q_j}{r^2}$$      (directed along r_i - r_j)
+\[\text{fractional\_drift} = \frac{E_{\text{total}}(t) - E_{\text{total}}(0)}{\vert{}E_{\text{total}}(0)\vert{}}\]
 
 | Method | Key | Notes |
 | --- | --- | --- |
