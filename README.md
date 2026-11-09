@@ -122,37 +122,37 @@ The project is organized into the following components:
 
 ### Core Simulation Files (`src/`)
 
-- **`antimatter-kernel.h` / `antimatter-kernel.cc`**: Declare and define the `Simulate` function and `main`. `Simulate` registers the parameter groups, builds the `PenningTrapField`, creates the particles with their behaviours, runs the main loop (Coulomb forces, then one scheduler step), and writes the energy log.
+- **antimatter-kernel.h` / `antimatter-kernel.cc**: Declare and define the `Simulate` function and `main`. `Simulate` registers the parameter groups, builds the `PenningTrapField`, creates the particles with their behaviours, runs the main loop (Coulomb forces, then one scheduler step), and writes the energy log.
 
-- **`agents/charged_antiparticle.h` / `.cc`**: Defines the `ChargedAntiparticle` agent, which carries position, velocity, charge, mass, species, an annihilated flag and the Coulomb force computed for the current step.
+- **agents/charged_antiparticle.h / .cc**: Defines the `ChargedAntiparticle` agent, which carries position, velocity, charge, mass, species, an annihilated flag and the Coulomb force computed for the current step.
 
-- **`agents/particle_species.h`**: Defines the particle species (positron, electron, antiproton, proton) and their properties.
+- **agents/particle_species.h**: Defines the particle species (positron, electron, antiproton, proton) and their properties.
 
-- **`fields/penning_trap.h` / `.cc`**: Defines the `PenningTrapField`. It is built from the trap geometry with `MakeFromGeometry`, provides the electric and magnetic field at a position, and generates the initial particle positions in a configurable *ellipsoidal cloud* and Gaussian thermal velocities.
+- **fields/penning_trap.h / .cc**: Defines the `PenningTrapField`. It is built from the trap geometry with `MakeFromGeometry`, provides the electric and magnetic field at a position, and generates the initial particle positions in a configurable *ellipsoidal cloud* and Gaussian thermal velocities.
 
-- **`forces/lorentz.h` / `.cc`**: The `LorentzForce` behaviour. It advances each particle with the Boris pusher, combining the trap electric field and the Coulomb force, and then resets the stored Coulomb force.
+- **forces/lorentz.h / .cc**: The `LorentzForce` behaviour. It advances each particle with the Boris pusher, combining the trap electric field and the Coulomb force, and then resets the stored Coulomb force.
 
-- **`forces/cooling.h` / `.cc`**: The `CyclotronCooling` behaviour. It damps the velocity component perpendicular to **B** using the Larmor radiation rate, with an optional Langevin thermal floor set by `bath_temperature`.
+- **forces/cooling.h / .cc**: The `CyclotronCooling` behaviour. It damps the velocity component perpendicular to **B** using the Larmor radiation rate, with an optional Langevin thermal floor set by `bath_temperature`.
 
-- **`interaction/coulomb_interaction.h` / `.cc`**: `ComputeStandardCoulombForces`, the direct solver. It uses BioDynaMo's neighbour search with a cutoff radius and OpenMP.
+- **interaction/coulomb_interaction.h / .cc**: `ComputeStandardCoulombForces`, the direct solver. It uses BioDynaMo's neighbour search with a cutoff radius and OpenMP.
 
-- **`interaction/barnes-hut.h` / `.cc`**: `ComputeBarnesHutCoulombForces`, an octree solver with a monopole approximation and an opening angle `theta`. `theta = 0` reproduces the exact all-pairs result.
+- **interaction/barnes-hut.h / .cc**: `ComputeBarnesHutCoulombForces`, an octree solver with a monopole approximation and an opening angle `theta`. `theta = 0` reproduces the exact all-pairs result.
 
-- **`interaction/fast-multipole.h` / `.cc`**: `ComputeFastMultipoleCoulombForces`, the fast multipole solver with configurable `order` and `theta`.
+- **interaction/fast-multipole.h / .cc**: `ComputeFastMultipoleCoulombForces`, the fast multipole solver with configurable `order` and `theta`.
 
-- **`interaction/annihilation.h` / `.cc`**: The `AnnihilationInteraction` behaviour. Particle/antiparticle pairs within `contact_radius` annihilate with probability `annihilation_probability`.
+- **interaction/annihilation.h / .cc**: The `AnnihilationInteraction` behaviour. Particle/antiparticle pairs within `contact_radius` annihilate with probability `annihilation_probability`.
 
-- **`analysis/energy_analysis.h` / `.cc`**: `ComputeTotalEnergy` and `EnergyBreakdown`: kinetic energy, trap potential energy and Coulomb potential energy.
+- **analysis/energy_analysis.h / .cc**: `ComputeTotalEnergy` and `EnergyBreakdown`: kinetic energy, trap potential energy and Coulomb potential energy.
 
-- **`params/physics_params.h` / `.cc`**, **`interaction_params.h` / `.cc`**, **`stochastic_params.h` / `.cc`**: The parameter groups (`PhysicsParams`, `InteractionParams`, `StochasticParams`). Each provides `LoadParams` to read `params.json`, `Validate` to check the values and `PrintParams` to display them.
+- **params/physics_params.h / .cc**, **interaction_params.h / .cc**, **stochastic_params.h / .cc**: The parameter groups (`PhysicsParams`, `InteractionParams`, `StochasticParams`). Each provides `LoadParams` to read `params.json`, `Validate` to check the values and `PrintParams` to display them.
 
-- **`utils/constants.h`**: Physical constants (for example the Coulomb constant).
+- **utils/constants.h**: Physical constants (for example the Coulomb constant).
 
 ### Configuration Files
 
-- **`params.json`**: JSON parameter file for configuring runs without recompilation.
-- **`bdm.toml`**: BioDynaMo runtime configuration (neighbour-search environment, scheduled operations, ParaView export).
-- **`CMakeLists.txt`**: CMake build configuration that integrates with BioDynaMo.
+- **params.json**: JSON parameter file for configuring runs without recompilation.
+- **bdm.toml**: BioDynaMo runtime configuration (neighbour-search environment, scheduled operations, ParaView export).
+- **CMakeLists.txt**: CMake build configuration that integrates with BioDynaMo.
 
 ### Tests
 
@@ -308,7 +308,7 @@ interval = 100
 ```
 
 - `environment` selects the neighbour-search structure. Remove the line to use BioDynaMo's default uniform grid.
-- `unschedule_default_operations` removes `load balancing` (not supported by the octree environment) and `mechanical forces` (which would push agents apart as overlapping spheres on top of the Boris push and corrupt energy conservation).
+- `unschedule_default_operations` removes `load balancing` and `mechanical forces`
 - `additional_data_members` requires `ChargedAntiparticle` to expose a data member named exactly `species_id`.
 - `interval` sets how often ParaView files are written. Raise it for large runs to limit disk use.
 
@@ -323,7 +323,11 @@ step, kinetic_energy_J, trap_potential_energy_J, potential_energy_J,
 total_energy_J, num_active_particles, fractional_drift
 ```
 
-Energy is logged about 100 times per run (every `num_steps / 100` steps) and at the final step. `fractional_drift` is `(E_total(t) - E_total(0)) / |E_total(0)|`. Without cooling and annihilation it stays small and serves as a check on the time step and the Coulomb method. With cooling on, the total energy is expected to decrease, since radiation removes energy.
+Energy is logged about 100 times per run (every `num_steps / 100` steps) and at the final step:
+
+$`\text{fractional\_drift} = \frac{E_{\text{total}}(t) - E_{\text{total}}(0)}{|E_{\text{total}}(0)|}`$
+
+Without cooling and annihilation it stays small and serves as a check on the time step and the Coulomb method. With cooling on, the total energy is expected to decrease, since radiation removes energy.
 
 To visualize the 3D particle positions in ParaView, open the generated state file (the path follows BioDynaMo's output layout, for example):
 
